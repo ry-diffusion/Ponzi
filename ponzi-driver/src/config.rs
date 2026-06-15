@@ -155,18 +155,18 @@ impl Default for Config {
                 anti_chatter_threshold: 2,
             },
             buttons: ButtonConfig {
-                b1: vec!["E".into()],
-                b2: vec!["B".into()],
-                b3: vec!["LEFTCTRL".into(), "KPMINUS".into()],
-                b4: vec!["LEFTCTRL".into(), "KPPLUS".into()],
-                b5: vec!["LEFTBRACE".into()],
-                b6: vec!["RIGHTBRACE".into()],
-                b7: vec!["SCROLLUP".into()],
-                b8: vec!["TAB".into()],
-                b9: vec!["SCROLLDOWN".into()],
-                b10: vec!["SPACE".into()],
-                b11: vec!["LEFTCTRL".into()],
-                b12: vec!["LEFTALT".into()],
+                b1: vec!["LEFTCTRL".into(), "Z".into()],           // Undo
+                b2: vec!["LEFTCTRL".into(), "LEFTSHIFT".into(), "Z".into()], // Redo
+                b3: vec!["P".into()],                               // Pen/Draw
+                b4: vec!["E".into()],                               // Eraser
+                b5: vec!["V".into()],                               // Select
+                b6: vec!["H".into()],                               // Hand/Pan
+                b7: vec!["DELETE".into()],                          // Delete
+                b8: vec!["LEFTCTRL".into(), "D".into()],           // Duplicate
+                b9: vec!["LEFTCTRL".into(), "A".into()],           // Select all
+                b10: vec!["LEFTSHIFT".into(), "1".into()],         // Zoom to fit
+                b11: vec!["S".into()],                              // Stroke color
+                b12: vec!["R".into()],                              // Rectangle
             },
             pen_buttons: PenButtonConfig {
                 stylus: "BTN_STYLUS".into(),

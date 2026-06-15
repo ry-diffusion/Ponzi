@@ -788,7 +788,7 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
         ui.add_space(4.0);
 
         let labels = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12"];
-        let hints = ["E", "B", "Ctrl+-", "Ctrl++", "[", "]", "ScrollUp", "Tab", "ScrollDown", "Space", "Ctrl", "Alt"];
+        let hints = ["Undo", "Redo", "Pen", "Eraser", "Select", "Pan", "Delete", "Duplicate", "Select All", "Zoom Fit", "Stroke Color", "Rectangle"];
 
         egui::Grid::new("express_btns").num_columns(3).spacing([8.0, 3.0]).show(ui, |ui| {
             for (i, (label, hint)) in labels.iter().zip(hints.iter()).enumerate() {
