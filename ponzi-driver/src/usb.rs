@@ -5,10 +5,6 @@ use std::time::Duration;
 const TIMEOUT: Duration = Duration::from_secs(1);
 const MAX_RETRIES: u8 = 5;
 
-// Type 6: configuration report — enables high-res, connect mode, full area
-// Reverse engineered from TabletService.exe via rizin disassembly
-const CONFIG_REPORT: [u8; 8] = [0x08, 0x06, 0x01, 0x03, 0x01, 0x00, 0x00, 0x00];
-
 // Type 3: active area modeset — sets coordinate range to full 4096x4096
 const MODESET_REPORT: [u8; 8] = [0x08, 0x03, 0x00, 0xFF, 0xF0, 0x00, 0xFF, 0xF0];
 
@@ -72,9 +68,8 @@ impl Tablet {
                     // Claim ALL HID interfaces (both the pen data iface and the modeset iface)
                     let iface_num = desc.interface_number();
                     self.handle.claim_interface(iface_num)
-                        .map_err(|e| {
+                        .inspect_err(|&e| {
                             error!("Could not claim interface {}: {}", iface_num, e);
-                            e
                         })?;
                     self.claimed_interfaces.push(iface_num);
                     info!("Claimed HID interface {}", iface_num);

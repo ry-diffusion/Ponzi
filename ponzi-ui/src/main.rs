@@ -36,7 +36,7 @@ fn list_profiles() -> Vec<String> {
         for entry in entries.flatten() {
             if let Some(name) = entry.path().file_stem().and_then(|s| s.to_str()) {
                 let name = name.to_string();
-                if name != DEFAULT_PROFILE && entry.path().extension().map_or(false, |e| e == "toml") {
+                if name != DEFAULT_PROFILE && entry.path().extension().is_some_and(|e| e == "toml") {
                     profiles.push(name);
                 }
             }
@@ -124,7 +124,7 @@ fn start_tray() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     let service = ksni::TrayService::new(PonziTray);
-    service.run();
+    let _ = service.run();
     Ok(())
 }
 

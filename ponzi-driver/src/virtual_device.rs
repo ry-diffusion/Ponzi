@@ -1,13 +1,13 @@
 use evdev::{
-    AbsInfo, AbsoluteAxisCode, AttributeSet, BusType, EventType, InputEvent, InputId,
-    KeyCode, KeyEvent, PropType, RelativeAxisCode, UinputAbsSetup,
+    AbsInfo, AbsoluteAxisCode, AttributeSet, EventType, InputEvent,
+    KeyCode, KeyEvent, RelativeAxisCode, UinputAbsSetup,
     uinput::VirtualDevice,
 };
 use log::{error, info, warn};
 use std::io;
 use std::sync::{Arc, Mutex};
 
-use crate::config::{ButtonConfig, Config, InputMode, parse_key};
+use crate::config::{Config, InputMode, parse_key};
 use crate::protocol::{PenButton, PenData, TabletKey};
 
 pub struct VirtualPen {
@@ -168,10 +168,10 @@ impl InputProcessor {
     pub fn new(cfg: Arc<Mutex<Config>>) -> Self {
         let c = cfg.lock().unwrap();
         let mut button_keys: [Vec<KeyCode>; 12] = Default::default();
-        for i in 0..12 {
+        for (i, slot) in button_keys.iter_mut().enumerate() {
             for name in c.buttons.keys_for(i) {
                 match parse_key(name) {
-                    Some(kc) => button_keys[i].push(kc),
+                    Some(kc) => slot.push(kc),
                     None => warn!("Unknown key '{}' in b{}", name, i + 1),
                 }
             }
