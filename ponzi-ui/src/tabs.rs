@@ -285,12 +285,15 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig, live: &crate::LiveD
                 "Active area", egui::FontId::proportional(10.0), theme::ACCENT_DIM,
             );
 
-            // Live pen position
+            // Live pen position (raw on tablet)
             if live.connected && (live.pen.x > 0 || live.pen.y > 0) {
-                let px = rect.left() + (live.pen.x as f32 / 4095.0) * rect.width();
-                let py = rect.top() + (live.pen.y as f32 / 4095.0) * rect.height();
+                let raw_x = live.pen.x as f32;
+                let raw_y = live.pen.y as f32;
+                let px = rect.left() + (raw_x / 4095.0) * rect.width();
+                let py = rect.top() + (raw_y / 4095.0) * rect.height();
                 let pos = Pos2::new(px, py);
 
+                // Crosshair
                 painter.line_segment([Pos2::new(px, rect.top()), Pos2::new(px, rect.bottom())],
                     Stroke::new(0.5, Color32::from_rgba_premultiplied(0, 212, 170, 50)));
                 painter.line_segment([Pos2::new(rect.left(), py), Pos2::new(rect.right(), py)],
@@ -299,6 +302,27 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig, live: &crate::LiveD
                 let color = if auto.active { theme::RED } else { theme::ACCENT };
                 painter.circle_filled(pos, 4.0, color);
                 painter.circle_stroke(pos, 8.0, Stroke::new(1.0, Color32::from_rgba_premultiplied(color.r(), color.g(), color.b(), 80)));
+
+                // Show mapped screen percentage
+                let tl_x = m.tablet_left as f32;
+                let tr_x = m.tablet_right as f32;
+                let tl_y = m.tablet_top as f32;
+                let tr_y = m.tablet_bottom as f32;
+                let in_area = raw_x >= tl_x && raw_x <= tr_x && raw_y >= tl_y && raw_y <= tr_y;
+                if in_area && tr_x > tl_x && tr_y > tl_y {
+                    let screen_pct_x = ((raw_x - tl_x) / (tr_x - tl_x) * 100.0) as i32;
+                    let screen_pct_y = ((raw_y - tl_y) / (tr_y - tl_y) * 100.0) as i32;
+                    painter.text(
+                        Pos2::new(px + 12.0, py - 4.0), egui::Align2::LEFT_BOTTOM,
+                        format!("Screen {}%,{}%", screen_pct_x, screen_pct_y),
+                        egui::FontId::monospace(9.0), theme::YELLOW,
+                    );
+                } else {
+                    painter.text(
+                        Pos2::new(px + 12.0, py - 4.0), egui::Align2::LEFT_BOTTOM,
+                        "Outside", egui::FontId::monospace(9.0), theme::RED_DIM,
+                    );
+                }
             }
 
             // Automapper capture area preview
