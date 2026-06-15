@@ -478,8 +478,7 @@ fn usb_reader_thread(
                 }
                 log::debug!("modeset OK — creating virtual devices...");
 
-                let cfg_snapshot = shared_cfg.lock().unwrap().clone();
-                let driver_state = match DriverState::new(&cfg_snapshot) {
+                let driver_state = match DriverState::new(Arc::clone(&shared_cfg)) {
                     Ok(ds) => {
                         log::info!("virtual input devices created");
                         ds
@@ -537,12 +536,6 @@ fn usb_reader_thread(
                             let data = PenData::decode(&buf);
 
                             if passthrough {
-                                let cfg = shared_cfg.lock().unwrap();
-                                processor.mapping = cfg.mapping.clone();
-                                processor.orientation = cfg.orientation.clone();
-                                processor.pressure = cfg.pressure.clone();
-                                processor.smoothing = cfg.smoothing.clone();
-                                drop(cfg);
                                 processor.process(&data, &mut pen, &mut keys);
                             }
 
@@ -599,10 +592,12 @@ struct DriverState {
 }
 
 impl DriverState {
-    fn new(cfg: &Config) -> Result<Self, Box<dyn std::error::Error>> {
-        let pen = VirtualPen::new(&cfg.pressure, &cfg.mapping)?;
+    fn new(shared_cfg: Arc<Mutex<Config>>) -> Result<Self, Box<dyn std::error::Error>> {
+        let cfg = shared_cfg.lock().unwrap();
+        let pen = VirtualPen::new(&cfg)?;
         let keys = VirtualKeys::new(&cfg.buttons)?;
-        let processor = InputProcessor::new(cfg);
+        drop(cfg);
+        let processor = InputProcessor::new(shared_cfg);
         Ok(Self { pen, keys, processor })
     }
 }

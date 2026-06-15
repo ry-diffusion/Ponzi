@@ -3,6 +3,7 @@ use log::{error, info};
 use signal_hook::{consts::{SIGINT, SIGQUIT, SIGTERM}, iterator::Signals};
 use std::fs;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use ponzi_driver::config::Config;
 use ponzi_driver::protocol::PenData;
@@ -10,10 +11,7 @@ use ponzi_driver::usb::Tablet;
 use ponzi_driver::virtual_device::{InputProcessor, VirtualKeys, VirtualPen};
 
 const PID_FILE: &str = "/run/ponzi/ponzi.pid";
-const CONFIG_PATHS: &[&str] = &[
-    "config.toml",
-    "/etc/ponzi/config.toml",
-];
+const CONFIG_PATHS: &[&str] = &["config.toml", "/etc/ponzi/config.toml"];
 
 fn find_config() -> Config {
     for path in CONFIG_PATHS {
@@ -48,18 +46,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Ponzi driver v{} starting", env!("CARGO_PKG_VERSION"));
 
     write_pid();
-    let cfg = find_config();
+    let cfg = Arc::new(Mutex::new(find_config()));
 
     let mut signals = Signals::new([SIGINT, SIGTERM, SIGQUIT])?;
 
-    let mut tablet = Tablet::open(cfg.device.vendor_id, cfg.device.product_id)?;
+    let (vid, pid) = {
+        let c = cfg.lock().unwrap();
+        (c.device.vendor_id, c.device.product_id)
+    };
+
+    let mut tablet = Tablet::open(vid, pid)?;
     tablet.init()?;
     tablet.set_full_mode()?;
-    info!("Tablet attached (VID {:04X}, PID {:04X})", cfg.device.vendor_id, cfg.device.product_id);
+    info!("Tablet attached (VID {:04X}, PID {:04X})", vid, pid);
 
-    let mut pen = VirtualPen::new(&cfg.pressure, &cfg.mapping)?;
-    let mut keys = VirtualKeys::new(&cfg.buttons)?;
-    let mut processor = InputProcessor::new(&cfg);
+    let mut pen = VirtualPen::new(&cfg.lock().unwrap())?;
+    let mut keys = VirtualKeys::new(&cfg.lock().unwrap().buttons)?;
+    let mut processor = InputProcessor::new(Arc::clone(&cfg));
     info!("Virtual input devices registered — driver is running");
 
     let mut buf = vec![0u8; 64];
