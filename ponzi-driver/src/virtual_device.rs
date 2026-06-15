@@ -29,6 +29,9 @@ impl VirtualPen {
         keys.insert(KeyCode::BTN_STYLUS);
         keys.insert(KeyCode::BTN_STYLUS2);
 
+        let mut props = AttributeSet::<PropType>::new();
+        props.insert(PropType::DIRECT);
+
         let abs_max = 4095;
         let x = UinputAbsSetup::new(
             AbsoluteAxisCode::ABS_X,
@@ -48,6 +51,7 @@ impl VirtualPen {
         let device = VirtualDevice::builder()?
             .name("Ponzi Tablet Pen")
             .input_id(id)
+            .with_properties(&props)?
             .with_absolute_axis(&x)?
             .with_absolute_axis(&y)?
             .with_absolute_axis(&press)?
