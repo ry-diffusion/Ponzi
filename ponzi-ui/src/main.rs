@@ -354,59 +354,59 @@ fn usb_reader_thread(
                 }
                 log::debug!("modeset OK — creating virtual devices...");
 
-                let mut driver_state: Option<DriverState> = match DriverState::new(&cfg) {
+                let driver_state = match DriverState::new(&cfg) {
                     Ok(ds) => {
                         log::info!("virtual input devices created");
-                        Some(ds)
+                        ds
                     }
                     Err(e) => {
                         log::error!("failed to create virtual devices: {}", e);
-                        None
+                        let mut l = live.lock().unwrap();
+                        l.connected = true;
+                        l.locked = false;
+                        l.error_msg = format!("vdev: {}", e);
+                        ctx.request_repaint();
+                        // Still read data for UI even without virtual devices
+                        let mut buf = vec![0u8; 64];
+                        loop {
+                            match tablet.read_input(&mut buf) {
+                                Ok(_) => {
+                                    let mut l = live.lock().unwrap();
+                                    l.pen = PenData::decode(&buf);
+                                }
+                                Err(rusb::Error::Timeout) => {}
+                                Err(_) => break,
+                            }
+                        }
+                        continue;
                     }
                 };
+
+                // passthrough starts ON — virtual device always exists
+                let mut passthrough = true;
 
                 {
                     let mut l = live.lock().unwrap();
                     l.connected = true;
-                    l.locked = driver_state.is_some();
-                    if !l.locked {
-                        l.error_msg = "virtual device failed".into();
-                    } else {
-                        l.error_msg.clear();
-                    }
+                    l.locked = true;
+                    l.error_msg.clear();
                 }
                 ctx.request_repaint();
 
+                let mut pen = driver_state.pen;
+                let mut keys = driver_state.keys;
+                let mut processor = driver_state.processor;
                 let mut buf = vec![0u8; 64];
+
                 loop {
-                    // Check lock/unlock signals
+                    // Check lock/unlock toggle (just flips passthrough, no reconnect)
                     {
                         let mut sig = lock_signal.lock().unwrap();
                         if let Some(want_locked) = sig.take() {
-                            if want_locked && driver_state.is_none() {
-                                log::debug!("creating virtual input devices...");
-                                match DriverState::new(&cfg) {
-                                    Ok(ds) => {
-                                        log::debug!("virtual devices created OK");
-                                        driver_state = Some(ds);
-                                        live.lock().unwrap().locked = true;
-                                        ctx.request_repaint();
-                                    }
-                                    Err(e) => {
-                                        log::error!("creating virtual devices: {}", e);
-                                        let mut l = live.lock().unwrap();
-                                        l.error_msg = format!("vdev: {}", e);
-                                        ctx.request_repaint();
-                                    }
-                                }
-                            } else if !want_locked && driver_state.is_some() {
-                                log::debug!("dropping virtual devices (unlock)");
-                                driver_state = None;
-                                tablet.release();
-                                live.lock().unwrap().locked = false;
-                                ctx.request_repaint();
-                                break; // exit read loop, will reconnect
-                            }
+                            passthrough = want_locked;
+                            log::info!("passthrough {}", if passthrough { "ON" } else { "OFF" });
+                            live.lock().unwrap().locked = passthrough;
+                            ctx.request_repaint();
                         }
                     }
 
@@ -414,9 +414,8 @@ fn usb_reader_thread(
                         Ok(_) => {
                             let data = PenData::decode(&buf);
 
-                            // Feed virtual devices if locked
-                            if let Some(ref mut ds) = driver_state {
-                                ds.processor.process(&data, &mut ds.pen, &mut ds.keys);
+                            if passthrough {
+                                processor.process(&data, &mut pen, &mut keys);
                             }
 
                             let mut l = live.lock().unwrap();
@@ -432,12 +431,12 @@ fn usb_reader_thread(
                             }
                         }
                         Err(rusb::Error::NoDevice) => {
-                            log::debug!("device disconnected (NoDevice)");
+                            log::info!("device disconnected");
                             break;
                         }
                         Err(rusb::Error::Timeout) => {}
                         Err(e) => {
-                            log::debug!("read error: {}", e);
+                            log::error!("read error: {}", e);
                             break;
                         }
                     }
