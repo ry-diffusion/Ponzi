@@ -722,8 +722,8 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("DELETE");          b.b8 = k("LEFTCTRL+D");
             b.b9 = k("LEFTCTRL+A");     b.b10 = k("LEFTSHIFT+1");
             b.b11 = k("S");             b.b12 = k("R");
-            pen.stylus = "KEY_EQUAL".into();   // Zoom in (+)
-            pen.eraser = "KEY_MINUS".into();   // Zoom out (-)
+            pen.stylus = "SCROLLUP".into();    // Zoom in (Ctrl+scroll in Excalidraw)
+            pen.eraser = "SCROLLDOWN".into();  // Zoom out
             pen.tip = "BTN_LEFT".into();
         }
         "Krita" => {
@@ -733,8 +733,8 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("SPACE");          b.b8 = k("LEFTCTRL+LEFTALT");
             b.b9 = k("DELETE");          b.b10 = k("LEFTCTRL+LEFTSHIFT+E");
             b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
-            pen.stylus = "KEY_EQUAL".into();   // Zoom in
-            pen.eraser = "KEY_MINUS".into();   // Zoom out
+            pen.stylus = "SCROLLUP".into();
+            pen.eraser = "SCROLLDOWN".into();
             pen.tip = "BTN_LEFT".into();
         }
         "GIMP" => {
@@ -744,8 +744,8 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("SPACE");          b.b8 = k("O");
             b.b9 = k("DELETE");          b.b10 = k("LEFTSHIFT+LEFTCTRL+E");
             b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
-            pen.stylus = "KEY_EQUAL".into();   // Zoom in
-            pen.eraser = "KEY_MINUS".into();   // Zoom out
+            pen.stylus = "SCROLLUP".into();
+            pen.eraser = "SCROLLDOWN".into();
             pen.tip = "BTN_LEFT".into();
         }
         "Inkscape" => {
@@ -755,8 +755,8 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("SPACE");          b.b8 = k("3");
             b.b9 = k("DELETE");          b.b10 = k("F7");
             b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
-            pen.stylus = "KEY_EQUAL".into();   // Zoom in
-            pen.eraser = "KEY_MINUS".into();   // Zoom out
+            pen.stylus = "SCROLLUP".into();
+            pen.eraser = "SCROLLDOWN".into();
             pen.tip = "BTN_LEFT".into();
         }
         "Blender" => {
@@ -817,19 +817,19 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
         ui.add_space(4.0);
         let all_actions: &[(&str, &str)] = &[
             ("none", "Disabled"),
-            ("BTN_LEFT", "Left click"),
-            ("BTN_RIGHT", "Right click"),
-            ("BTN_MIDDLE", "Middle click"),
-            ("BTN_STYLUS", "Pen button"),
-            ("BTN_STYLUS2", "Eraser button"),
-            ("KEY_EQUAL", "Zoom in (+)"),
-            ("KEY_MINUS", "Zoom out (-)"),
-            ("KPPLUS", "Zoom in (Numpad)"),
-            ("KPMINUS", "Zoom out (Numpad)"),
-            ("KEY_LEFTCTRL", "Ctrl (hold)"),
-            ("KEY_LEFTSHIFT", "Shift (hold)"),
-            ("KEY_LEFTALT", "Alt (hold)"),
-            ("KEY_SPACE", "Space (pan)"),
+            ("BTN_LEFT", "Left Click"),
+            ("BTN_RIGHT", "Right Click"),
+            ("BTN_MIDDLE", "Middle Click"),
+            ("BTN_STYLUS", "Stylus"),
+            ("BTN_STYLUS2", "Stylus 2"),
+            ("KEY_EQUAL", "+"),
+            ("KEY_MINUS", "-"),
+            ("KPPLUS", "Numpad +"),
+            ("KPMINUS", "Numpad -"),
+            ("KEY_LEFTCTRL", "Ctrl"),
+            ("KEY_LEFTSHIFT", "Shift"),
+            ("KEY_LEFTALT", "Alt"),
+            ("KEY_SPACE", "Space"),
             ("KEY_E", "E"),
             ("KEY_B", "B"),
             ("KEY_P", "P"),
@@ -838,8 +838,8 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
             ("KEY_S", "S"),
             ("KEY_Z", "Z"),
             ("KEY_DELETE", "Delete"),
-            ("SCROLLUP", "Scroll up"),
-            ("SCROLLDOWN", "Scroll down"),
+            ("SCROLLUP", "Scroll Up"),
+            ("SCROLLDOWN", "Scroll Down"),
         ];
 
         fn action_label<'a>(val: &str, options: &'a [(&str, &str)]) -> &'a str {
