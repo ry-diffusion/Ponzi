@@ -33,7 +33,7 @@ impl VirtualPen {
         let press = UinputAbsSetup::new(AbsoluteAxisCode::ABS_PRESSURE, AbsInfo::new(0, 0, pressure.max_pressure, 0, 0, 1));
 
         let device = VirtualDevice::builder()?
-            .name("tablet_pen")
+            .name("Ponzi Tablet Pen")
             .with_absolute_axis(&x)?
             .with_absolute_axis(&y)?
             .with_absolute_axis(&press)?
@@ -273,8 +273,10 @@ impl InputProcessor {
         if emit_touch_change {
             if touching {
                 pen_events.push(KeyEvent::new(KeyCode::BTN_TOUCH, 1).into());
+                pen_events.push(KeyEvent::new(KeyCode::BTN_LEFT, 1).into());
             } else {
                 pen_events.push(KeyEvent::new(KeyCode::BTN_TOUCH, 0).into());
+                pen_events.push(KeyEvent::new(KeyCode::BTN_LEFT, 0).into());
                 self.smooth_initialized = false;
             }
             self.chatter_count = 0;
