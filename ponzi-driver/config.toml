@@ -71,6 +71,6 @@ b12 = ["LEFTALT"]
 # ── Botões da Caneta ─────────────────────────────────────────────────────
 [pen_buttons]
 # Key combos separated by comma. Ex: LEFTCTRL, EQUAL = Ctrl++
-stylus = ["LEFTCTRL", "EQUAL"]     # Lower barrel: Zoom in (Ctrl+)
+stylus = ["LEFTCTRL", "LEFTSHIFT", "EQUAL"]  # Lower barrel: Zoom in (Ctrl++)
 eraser = ["LEFTCTRL", "MINUS"]     # Upper barrel: Zoom out (Ctrl-)
 tip = ["BTN_LEFT"]                  # Tip touch: Left click

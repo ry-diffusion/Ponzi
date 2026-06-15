@@ -169,7 +169,7 @@ impl Default for Config {
                 b12: vec!["R".into()],                              // Rectangle
             },
             pen_buttons: PenButtonConfig {
-                stylus: vec!["LEFTCTRL".into(), "EQUAL".into()],
+                stylus: vec!["LEFTCTRL".into(), "LEFTSHIFT".into(), "EQUAL".into()],
                 eraser: vec!["LEFTCTRL".into(), "MINUS".into()],
                 tip: vec!["BTN_LEFT".into()],
             },

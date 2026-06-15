@@ -722,7 +722,7 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("DELETE");          b.b8 = k("LEFTCTRL+D");
             b.b9 = k("LEFTCTRL+A");     b.b10 = k("LEFTSHIFT+1");
             b.b11 = k("S");             b.b12 = k("R");
-            pen.stylus = k("LEFTCTRL+EQUAL");    // Zoom in (Ctrl+scroll in Excalidraw)
+            pen.stylus = k("LEFTCTRL+LEFTSHIFT+EQUAL");    // Zoom in (Ctrl+scroll in Excalidraw)
             pen.eraser = k("LEFTCTRL+MINUS");  // Zoom out
             pen.tip = k("BTN_LEFT");
         }
@@ -733,7 +733,7 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("SPACE");          b.b8 = k("LEFTCTRL+LEFTALT");
             b.b9 = k("DELETE");          b.b10 = k("LEFTCTRL+LEFTSHIFT+E");
             b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
-            pen.stylus = k("LEFTCTRL+EQUAL");
+            pen.stylus = k("LEFTCTRL+LEFTSHIFT+EQUAL");
             pen.eraser = k("LEFTCTRL+MINUS");
             pen.tip = k("BTN_LEFT");
         }
@@ -744,7 +744,7 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("SPACE");          b.b8 = k("O");
             b.b9 = k("DELETE");          b.b10 = k("LEFTSHIFT+LEFTCTRL+E");
             b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
-            pen.stylus = k("LEFTCTRL+EQUAL");
+            pen.stylus = k("LEFTCTRL+LEFTSHIFT+EQUAL");
             pen.eraser = k("LEFTCTRL+MINUS");
             pen.tip = k("BTN_LEFT");
         }
@@ -755,7 +755,7 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("SPACE");          b.b8 = k("3");
             b.b9 = k("DELETE");          b.b10 = k("F7");
             b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
-            pen.stylus = k("LEFTCTRL+EQUAL");
+            pen.stylus = k("LEFTCTRL+LEFTSHIFT+EQUAL");
             pen.eraser = k("LEFTCTRL+MINUS");
             pen.tip = k("BTN_LEFT");
         }
