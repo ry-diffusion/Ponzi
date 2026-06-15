@@ -1,8 +1,9 @@
 use evdev::{
-    AbsInfo, AbsoluteAxisCode, AttributeSet, EventType, InputEvent,
-    KeyCode, KeyEvent, UinputAbsSetup, uinput::VirtualDevice,
+    AbsInfo, AbsoluteAxisCode, AttributeSet, BusType, EventType, InputEvent, InputId,
+    KeyCode, KeyEvent, PropType, UinputAbsSetup,
+    uinput::VirtualDevice,
 };
-use log::{error, warn};
+use log::{error, info, warn};
 use std::io;
 
 use crate::config::{ButtonConfig, Config, MappingConfig, OrientationConfig, PressureConfig, SmoothingConfig, parse_key};
@@ -10,6 +11,7 @@ use crate::protocol::{PenButton, PenData, TabletKey};
 
 pub struct VirtualPen {
     device: VirtualDevice,
+    pen_in_range: bool,
 }
 
 pub struct VirtualKeys {
@@ -20,12 +22,15 @@ impl VirtualPen {
     pub fn new(pressure: &PressureConfig, mapping: &MappingConfig) -> io::Result<Self> {
         let mut keys = AttributeSet::<KeyCode>::new();
         keys.insert(KeyCode::BTN_TOOL_PEN);
+        keys.insert(KeyCode::BTN_TOOL_RUBBER);
         keys.insert(KeyCode::BTN_TOUCH);
         keys.insert(KeyCode::BTN_LEFT);
         keys.insert(KeyCode::BTN_RIGHT);
         keys.insert(KeyCode::BTN_STYLUS);
         keys.insert(KeyCode::BTN_STYLUS2);
-        keys.insert(KeyCode::BTN_TOOL_RUBBER);
+
+        let mut props = AttributeSet::<PropType>::new();
+        props.insert(PropType::DIRECT);
 
         let x = UinputAbsSetup::new(
             AbsoluteAxisCode::ABS_X,
@@ -40,15 +45,21 @@ impl VirtualPen {
             AbsInfo::new(0, 0, pressure.max_pressure, 0, 0, 1),
         );
 
+        let id = InputId::new(BusType::BUS_USB, 0x08F2, 0x6811, 1);
+
         let device = VirtualDevice::builder()?
-            .name("ponzi_tablet_pen")
+            .name("Ponzi Tablet Pen")
+            .input_id(id)
+            .with_properties(&props)?
             .with_absolute_axis(&x)?
             .with_absolute_axis(&y)?
             .with_absolute_axis(&press)?
             .with_keys(&keys)?
             .build()?;
 
-        Ok(Self { device })
+        info!("Virtual pen device created (INPUT_PROP_DIRECT, USB bus)");
+
+        Ok(Self { device, pen_in_range: false })
     }
 
     pub fn emit(&mut self, events: &[InputEvent]) {
@@ -57,6 +68,15 @@ impl VirtualPen {
         }
         if let Err(e) = self.device.emit(events) {
             error!("Failed to emit pen events: {}", e);
+        }
+    }
+
+    pub fn set_in_range(&mut self, in_range: bool) {
+        if in_range != self.pen_in_range {
+            self.pen_in_range = in_range;
+            let val = if in_range { 1 } else { 0 };
+            let event = KeyEvent::new(KeyCode::BTN_TOOL_PEN, val);
+            self.emit(&[event.into()]);
         }
     }
 }
@@ -73,9 +93,11 @@ impl VirtualKeys {
         }
 
         let device = VirtualDevice::builder()?
-            .name("ponzi_tablet_buttons")
+            .name("Ponzi Tablet Buttons")
             .with_keys(&keys)?
             .build()?;
+
+        info!("Virtual keyboard device created");
 
         Ok(Self { device })
     }
@@ -195,6 +217,10 @@ impl InputProcessor {
     pub fn process(&mut self, data: &PenData, pen: &mut VirtualPen, keys: &mut VirtualKeys) {
         let mut pen_events: Vec<InputEvent> = Vec::new();
         let mut key_events: Vec<InputEvent> = Vec::new();
+
+        // Signal pen in range (any valid data = pen is near the surface)
+        let has_position = data.x > 0 || data.y > 0 || data.pressure_raw > 0;
+        pen.set_in_range(has_position);
 
         // Apply orientation (rotation + flip)
         let (ox, oy) = apply_orientation(

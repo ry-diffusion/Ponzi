@@ -78,11 +78,11 @@ impl Tab {
     fn label(&self) -> &'static str {
         match self {
             Self::Status => "Status",
-            Self::Mapping => "Mapeamento",
-            Self::Orientation => "Orientação",
-            Self::Pressure => "Pressão",
-            Self::Smoothing => "Suavização",
-            Self::Buttons => "Botões",
+            Self::Mapping => "Mapping",
+            Self::Orientation => "Orientation",
+            Self::Pressure => "Pressure",
+            Self::Smoothing => "Smoothing",
+            Self::Buttons => "Buttons",
             Self::PressureTest => "Teste",
         }
     }
@@ -122,7 +122,7 @@ impl PonziApp {
 
     fn save_config(&mut self) {
         match std::fs::write(&self.config_path, self.config.to_toml()) {
-            Ok(()) => self.status_msg = "Configuração salva".into(),
+            Ok(()) => self.status_msg = "Configuration saved".into(),
             Err(e) => self.status_msg = format!("Erro: {}", e),
         }
         self.status_timer = 3.0;
@@ -156,11 +156,11 @@ impl eframe::App for PonziApp {
                 // Connection status LED
                 ui.horizontal(|ui| {
                     let (color, text) = if live.connected && live.locked {
-                        (theme::GREEN, "Conectada")
+                        (theme::GREEN, "Connected")
                     } else if live.connected {
-                        (theme::YELLOW, "Desbloqueada")
+                        (theme::YELLOW, "Unlocked")
                     } else {
-                        (theme::RED_DIM, "Desconectada")
+                        (theme::RED_DIM, "Disconnected")
                     };
                     let (rect, _) = ui.allocate_exact_size(egui::vec2(8.0, 8.0), egui::Sense::hover());
                     ui.painter().circle_filled(rect.center(), 4.0, color);
@@ -222,7 +222,7 @@ impl eframe::App for PonziApp {
 
                     ui.horizontal(|ui| {
                         let save_btn = egui::Button::new(
-                            egui::RichText::new("Salvar").color(theme::BG_DEEP).size(12.0)
+                            egui::RichText::new("Save").color(theme::BG_DEEP).size(12.0)
                         ).fill(theme::ACCENT).corner_radius(3);
                         if ui.add_sized([76.0, 28.0], save_btn).clicked() {
                             self.save_config();
@@ -233,7 +233,7 @@ impl eframe::App for PonziApp {
                         ).fill(theme::BG_ELEVATED).corner_radius(3);
                         if ui.add_sized([60.0, 28.0], reset_btn).clicked() {
                             self.config = Config::default();
-                            self.status_msg = "Restaurado".into();
+                            self.status_msg = "Reset".into();
                             self.status_timer = 2.0;
                         }
                     });
@@ -242,13 +242,13 @@ impl eframe::App for PonziApp {
 
                     if live.connected && live.locked {
                         let unlock_btn = egui::Button::new(
-                            egui::RichText::new("⏏ Desbloquear").color(theme::ORANGE).size(12.0)
+                            egui::RichText::new("⏏ Unlock").color(theme::ORANGE).size(12.0)
                         ).fill(Color32::from_rgb(40, 32, 16)).corner_radius(3)
                          .stroke(Stroke::new(1.0, theme::ORANGE));
                         if ui.add_sized([ui.available_width(), 30.0], unlock_btn).clicked() {
                             *self.unlock_signal.lock().unwrap() = true;
                         }
-                        ui.label(egui::RichText::new("Libera para outros apps").color(theme::TEXT_DIM).size(9.5));
+                        ui.label(egui::RichText::new("Release for other apps").color(theme::TEXT_DIM).size(9.5));
                     } else if live.connected && !live.locked {
                         let lock_frame = egui::Frame::default()
                             .fill(Color32::from_rgb(30, 36, 20))
@@ -256,8 +256,8 @@ impl eframe::App for PonziApp {
                             .inner_margin(egui::Margin::symmetric(8, 6))
                             .stroke(Stroke::new(1.0, Color32::from_rgb(60, 70, 40)));
                         lock_frame.show(ui, |ui| {
-                            ui.label(egui::RichText::new("Mesa desbloqueada").color(theme::YELLOW).size(11.0));
-                            ui.label(egui::RichText::new("Outros apps podem usar").color(theme::TEXT_DIM).size(9.5));
+                            ui.label(egui::RichText::new("Tablet unlocked").color(theme::YELLOW).size(11.0));
+                            ui.label(egui::RichText::new("Other apps can use it").color(theme::TEXT_DIM).size(9.5));
                         });
                     }
 
@@ -362,7 +362,7 @@ fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, unlock: Arc
                     let mut l = live.lock().unwrap();
                     l.connected = false;
                     l.locked = false;
-                    l.error_msg = "Desconectado".into();
+                    l.error_msg = "Disconnected".into();
                     ctx.request_repaint();
                 }
             }

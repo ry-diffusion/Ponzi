@@ -17,24 +17,24 @@ fn page_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
 // ── Status ───────────────────────────────────────────────────────────────
 
 pub fn status_tab(ui: &mut egui::Ui, live: &LiveData, config: &Config) {
-    page_heading(ui, "STATUS", "Informações em tempo real da mesa digitalizadora");
+    page_heading(ui, "STATUS", "Real-time information from the drawing tablet");
 
     theme::section_frame().show(ui, |ui| {
         ui.columns(2, |cols| {
             let ui = &mut cols[0];
-            ui.label(theme::label_dim("DISPOSITIVO"));
+            ui.label(theme::label_dim("DEVICE"));
             ui.label(theme::label_mono(&format!("{:04X}:{:04X}", config.device.vendor_id, config.device.product_id)));
             ui.add_space(8.0);
 
-            ui.label(theme::label_dim("RESOLUÇÃO"));
+            ui.label(theme::label_dim("RESOLUTION"));
             ui.label(theme::label_mono(&format!("{}×{}", config.tablet.resolution_x, config.tablet.resolution_y)));
             ui.add_space(8.0);
 
-            ui.label(theme::label_dim("ROTAÇÃO"));
+            ui.label(theme::label_dim("ROTATION"));
             ui.label(theme::label_mono(&format!("{}°", config.mapping.rotation)));
 
             let ui = &mut cols[1];
-            ui.label(theme::label_dim("POSIÇÃO"));
+            ui.label(theme::label_dim("POSITION"));
             ui.label(theme::label_mono(&format!("X {:>5}  Y {:>5}", live.pen.x, live.pen.y)));
             ui.add_space(8.0);
 
@@ -42,7 +42,7 @@ pub fn status_tab(ui: &mut egui::Ui, live: &LiveData, config: &Config) {
             ui.label(theme::label_mono(&format!("{:>5}", live.pen.pressure_raw)));
             ui.add_space(8.0);
 
-            ui.label(theme::label_dim("CANETA"));
+            ui.label(theme::label_dim("PEN"));
             let pen_str = match live.pen.pen_button {
                 0 => "---",
                 4 => "STYLUS",
@@ -57,7 +57,7 @@ pub fn status_tab(ui: &mut egui::Ui, live: &LiveData, config: &Config) {
 
     ui.horizontal(|ui| {
         theme::section_frame().show(ui, |ui| {
-            ui.label(theme::label_dim("POSIÇÃO DA CANETA"));
+            ui.label(theme::label_dim("PEN POSITION"));
             ui.add_space(4.0);
             let size = Vec2::new(180.0, 180.0);
             let (resp, painter) = ui.allocate_painter(size, egui::Sense::hover());
@@ -91,7 +91,7 @@ pub fn status_tab(ui: &mut egui::Ui, live: &LiveData, config: &Config) {
         ui.add_space(8.0);
 
         theme::section_frame().show(ui, |ui| {
-            ui.label(theme::label_dim("PRESSÃO"));
+            ui.label(theme::label_dim("PRESSURE"));
             ui.add_space(4.0);
             let norm = if live.connected && live.pen.pressure_raw < config.pressure.touch_threshold {
                 ((config.pressure.touch_threshold - live.pen.pressure_raw) as f32
@@ -133,30 +133,30 @@ pub fn status_tab(ui: &mut egui::Ui, live: &LiveData, config: &Config) {
 // ── Mapping ──────────────────────────────────────────────────────────────
 
 pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig) {
-    page_heading(ui, "MAPEAMENTO", "Área ativa da mesa e destino na tela");
+    page_heading(ui, "MAPPING", "Active tablet area and screen destination");
 
     // Stacked vertically for responsiveness
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("ÁREA DA MESA"));
+        ui.label(theme::label_dim("TABLET AREA"));
         ui.add_space(4.0);
         egui::Grid::new("t_area").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-            ui.label("Esquerda"); ui.add(egui::Slider::new(&mut m.tablet_left, 0..=4095)); ui.end_row();
-            ui.label("Topo");     ui.add(egui::Slider::new(&mut m.tablet_top, 0..=4095)); ui.end_row();
-            ui.label("Direita");  ui.add(egui::Slider::new(&mut m.tablet_right, 0..=4095)); ui.end_row();
-            ui.label("Base");     ui.add(egui::Slider::new(&mut m.tablet_bottom, 0..=4095)); ui.end_row();
+            ui.label("Left");   ui.add(egui::Slider::new(&mut m.tablet_left, 0..=4095)); ui.end_row();
+            ui.label("Top");    ui.add(egui::Slider::new(&mut m.tablet_top, 0..=4095)); ui.end_row();
+            ui.label("Right");  ui.add(egui::Slider::new(&mut m.tablet_right, 0..=4095)); ui.end_row();
+            ui.label("Bottom"); ui.add(egui::Slider::new(&mut m.tablet_bottom, 0..=4095)); ui.end_row();
         });
     });
 
     ui.add_space(8.0);
 
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("ÁREA DA TELA"));
+        ui.label(theme::label_dim("SCREEN AREA"));
         ui.add_space(4.0);
         egui::Grid::new("s_area").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-            ui.label("Esquerda"); ui.add(egui::Slider::new(&mut m.screen_left, 0..=4095)); ui.end_row();
-            ui.label("Topo");     ui.add(egui::Slider::new(&mut m.screen_top, 0..=4095)); ui.end_row();
-            ui.label("Direita");  ui.add(egui::Slider::new(&mut m.screen_right, 0..=4095)); ui.end_row();
-            ui.label("Base");     ui.add(egui::Slider::new(&mut m.screen_bottom, 0..=4095)); ui.end_row();
+            ui.label("Left");   ui.add(egui::Slider::new(&mut m.screen_left, 0..=4095)); ui.end_row();
+            ui.label("Top");    ui.add(egui::Slider::new(&mut m.screen_top, 0..=4095)); ui.end_row();
+            ui.label("Right");  ui.add(egui::Slider::new(&mut m.screen_right, 0..=4095)); ui.end_row();
+            ui.label("Bottom"); ui.add(egui::Slider::new(&mut m.screen_bottom, 0..=4095)); ui.end_row();
         });
     });
 
@@ -164,9 +164,9 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig) {
 
     theme::section_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.checkbox(&mut m.force_proportions, "Forçar proporções");
+            ui.checkbox(&mut m.force_proportions, "Force proportions");
             ui.add_space(24.0);
-            ui.label(theme::label_dim("ROTAÇÃO"));
+            ui.label(theme::label_dim("ROTATION"));
             ui.radio_value(&mut m.rotation, 0, "0°");
             ui.radio_value(&mut m.rotation, 90, "90°");
             ui.radio_value(&mut m.rotation, 180, "180°");
@@ -177,7 +177,7 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig) {
     ui.add_space(8.0);
 
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("VISUALIZAÇÃO"));
+        ui.label(theme::label_dim("PREVIEW"));
         ui.add_space(4.0);
         let pw = ui.available_width().min(450.0);
         let ps = Vec2::new(pw, pw * 0.55);
@@ -213,7 +213,7 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig) {
 
         painter.text(
             Pos2::new(tl.x + 6.0, tl.y + 6.0), egui::Align2::LEFT_TOP,
-            "Área ativa", egui::FontId::proportional(11.0), theme::ACCENT_DIM,
+            "Active area", egui::FontId::proportional(11.0), theme::ACCENT_DIM,
         );
 
         painter.rect_stroke(rect, 2, Stroke::new(1.0, Color32::from_rgb(40, 46, 55)), StrokeKind::Outside);
@@ -223,23 +223,23 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig) {
 // ── Orientation ──────────────────────────────────────────────────────────
 
 pub fn orientation_tab(ui: &mut egui::Ui, o: &mut OrientationConfig) {
-    page_heading(ui, "ORIENTAÇÃO", "Espelhamento e modo canhoto");
+    page_heading(ui, "ORIENTATION", "Mirroring and left-hand mode");
 
     theme::section_frame().show(ui, |ui| {
-        ui.checkbox(&mut o.left_hand, "Modo canhoto");
-        ui.label(egui::RichText::new("Espelha o eixo X para uso com mão esquerda").color(theme::TEXT_DIM).size(11.0));
+        ui.checkbox(&mut o.left_hand, "Left-hand mode");
+        ui.label(egui::RichText::new("Mirrors the X axis for left-hand use").color(theme::TEXT_DIM).size(11.0));
         ui.add_space(8.0);
         ui.horizontal(|ui| {
-            ui.checkbox(&mut o.flip_x, "Espelhar X");
+            ui.checkbox(&mut o.flip_x, "Flip X");
             ui.add_space(16.0);
-            ui.checkbox(&mut o.flip_y, "Espelhar Y");
+            ui.checkbox(&mut o.flip_y, "Flip Y");
         });
     });
 
     ui.add_space(12.0);
 
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("VISUALIZAÇÃO"));
+        ui.label(theme::label_dim("PREVIEW"));
         ui.add_space(4.0);
         let ps = Vec2::new(180.0, 180.0);
         let (resp, painter) = ui.allocate_painter(ps, egui::Sense::hover());
@@ -265,25 +265,25 @@ pub fn orientation_tab(ui: &mut egui::Ui, o: &mut OrientationConfig) {
 // ── Pressure ─────────────────────────────────────────────────────────────
 
 pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig) {
-    page_heading(ui, "PRESSÃO", "Sensibilidade e curva de resposta da caneta");
+    page_heading(ui, "PRESSURE", "Sensitivity and pen response curve");
 
     theme::section_frame().show(ui, |ui| {
         egui::Grid::new("p_grid").num_columns(2).spacing([12.0, 6.0]).show(ui, |ui| {
-            ui.label("Limiar de toque");  ui.add(egui::Slider::new(&mut p.touch_threshold, 500..=3000)); ui.end_row();
-            ui.label("Faixa");            ui.add(egui::Slider::new(&mut p.pressure_range, 50..=2000)); ui.end_row();
-            ui.label("Máx. reportada");   ui.add(egui::Slider::new(&mut p.max_pressure, 1024..=65535)); ui.end_row();
-            ui.label("Zona morta");       ui.add(egui::Slider::new(&mut p.min_pressure_threshold, 0..=5000)); ui.end_row();
+            ui.label("Touch threshold"); ui.add(egui::Slider::new(&mut p.touch_threshold, 500..=3000)); ui.end_row();
+            ui.label("Range");           ui.add(egui::Slider::new(&mut p.pressure_range, 50..=2000)); ui.end_row();
+            ui.label("Max reported");    ui.add(egui::Slider::new(&mut p.max_pressure, 1024..=65535)); ui.end_row();
+            ui.label("Dead zone");       ui.add(egui::Slider::new(&mut p.min_pressure_threshold, 0..=5000)); ui.end_row();
         });
     });
 
     ui.add_space(12.0);
 
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("CURVA DE PRESSÃO"));
+        ui.label(theme::label_dim("PRESSURE CURVE"));
         ui.add_space(4.0);
 
         ui.horizontal(|ui| {
-            let presets = [("Linear", "linear"), ("Suave", "soft"), ("Firme", "firm"), ("Personalizado", "custom")];
+            let presets = [("Linear", "linear"), ("Soft", "soft"), ("Firm", "firm"), ("Custom", "custom")];
             for (label, val) in presets {
                 let selected = p.curve == val;
                 let btn = egui::Button::new(
@@ -338,13 +338,13 @@ pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig) {
                 [Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)],
                 Stroke::new(1.0, Color32::from_rgba_premultiplied(255, 82, 82, 120)));
             painter.text(Pos2::new(rect.right() - 4.0, y - 2.0), egui::Align2::RIGHT_BOTTOM,
-                "zona morta", egui::FontId::monospace(9.0), Color32::from_rgb(255, 82, 82));
+                "dead zone", egui::FontId::monospace(9.0), Color32::from_rgb(255, 82, 82));
         }
 
         painter.text(rect.left_bottom() + Vec2::new(4.0, -4.0), egui::Align2::LEFT_BOTTOM,
-            "FORÇA →", egui::FontId::monospace(9.0), theme::TEXT_DIM);
+            "FORCE →", egui::FontId::monospace(9.0), theme::TEXT_DIM);
         painter.text(rect.left_top() + Vec2::new(4.0, 4.0), egui::Align2::LEFT_TOP,
-            "↑ SAÍDA", egui::FontId::monospace(9.0), theme::TEXT_DIM);
+            "↑ OUTPUT", egui::FontId::monospace(9.0), theme::TEXT_DIM);
 
         painter.rect_stroke(rect, 2, Stroke::new(1.0, Color32::from_rgb(40, 46, 55)), StrokeKind::Outside);
     });
@@ -353,26 +353,26 @@ pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig) {
 // ── Smoothing ────────────────────────────────────────────────────────────
 
 pub fn smoothing_tab(ui: &mut egui::Ui, s: &mut SmoothingConfig) {
-    page_heading(ui, "SUAVIZAÇÃO", "Filtragem de traço e estabilização");
+    page_heading(ui, "SMOOTHING", "Stroke filtering and stabilization");
 
     theme::section_frame().show(ui, |ui| {
-        ui.checkbox(&mut s.enabled, "Suavização de traço");
+        ui.checkbox(&mut s.enabled, "Stroke smoothing");
         if s.enabled {
             ui.add_space(4.0);
-            ui.add(egui::Slider::new(&mut s.level, 1..=10).text("Nível"));
+            ui.add(egui::Slider::new(&mut s.level, 1..=10).text("Level"));
         }
         ui.add_space(8.0);
         ui.checkbox(&mut s.anti_chatter, "Anti-chatter");
         if s.anti_chatter {
             ui.add_space(4.0);
-            ui.add(egui::Slider::new(&mut s.anti_chatter_threshold, 1..=10).text("Quadros"));
+            ui.add(egui::Slider::new(&mut s.anti_chatter_threshold, 1..=10).text("Frames"));
         }
     });
 
     ui.add_space(12.0);
 
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("VISUALIZAÇÃO"));
+        ui.label(theme::label_dim("PREVIEW"));
         ui.add_space(4.0);
 
         let pw = ui.available_width().min(450.0);
@@ -412,7 +412,7 @@ pub fn smoothing_tab(ui: &mut egui::Ui, s: &mut SmoothingConfig) {
 // ── Buttons ──────────────────────────────────────────────────────────────
 
 pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenButtonConfig) {
-    page_heading(ui, "BOTÕES", "Mapeamento dos botões express e caneta");
+    page_heading(ui, "BUTTONS", "Express key and pen button mapping");
 
     theme::section_frame().show(ui, |ui| {
         ui.label(theme::label_dim("CANETA"));
