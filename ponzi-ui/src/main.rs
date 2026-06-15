@@ -180,10 +180,10 @@ impl eframe::App for PonziApp {
                 ui.add_space(2.0);
 
                 ui.horizontal(|ui| {
-                    let (color, text) = if live.connected && live.locked {
-                        (theme::GREEN, "Locked (driving)")
+                    let (color, text) = if live.connected && !live.locked {
+                        (theme::GREEN, "Active")
                     } else if live.connected {
-                        (theme::YELLOW, "Connected (read-only)")
+                        (theme::YELLOW, "Paused")
                     } else {
                         (theme::RED_DIM, "Disconnected")
                     };
@@ -264,26 +264,26 @@ impl eframe::App for PonziApp {
 
                     ui.add_space(6.0);
 
-                    if live.connected && live.locked {
+                    if live.connected && !live.locked {
                         let btn = egui::Button::new(
-                            egui::RichText::new("⏏ Unlock").color(theme::ORANGE).size(12.0)
+                            egui::RichText::new("⏸ Pause").color(theme::ORANGE).size(12.0)
                         ).fill(Color32::from_rgb(40, 32, 16)).corner_radius(3)
                          .stroke(Stroke::new(1.0, theme::ORANGE));
                         if ui.add_sized([ui.available_width(), 30.0], btn).clicked() {
-                            log::info!("user requested UNLOCK");
-                            *self.lock_signal.lock().unwrap() = Some(false);
+                            log::info!("user requested PAUSE");
+                            *self.lock_signal.lock().unwrap() = Some(true);
                         }
-                        ui.label(egui::RichText::new("Release for other apps").color(theme::TEXT_DIM).size(9.5));
-                    } else if live.connected && !live.locked {
+                        ui.label(egui::RichText::new("Tablet is active").color(theme::TEXT_DIM).size(9.5));
+                    } else if live.connected && live.locked {
                         let btn = egui::Button::new(
-                            egui::RichText::new("⬤ Lock & Drive").color(theme::GREEN).size(12.0)
+                            egui::RichText::new("▶ Resume").color(theme::GREEN).size(12.0)
                         ).fill(Color32::from_rgb(16, 36, 24)).corner_radius(3)
                          .stroke(Stroke::new(1.0, theme::GREEN));
                         if ui.add_sized([ui.available_width(), 30.0], btn).clicked() {
-                            log::info!("user requested LOCK (create virtual devices)");
-                            *self.lock_signal.lock().unwrap() = Some(true);
+                            log::info!("user requested RESUME");
+                            *self.lock_signal.lock().unwrap() = Some(false);
                         }
-                        ui.label(egui::RichText::new("Tablet in read-only mode").color(theme::TEXT_DIM).size(9.5));
+                        ui.label(egui::RichText::new("Passthrough paused").color(theme::TEXT_DIM).size(9.5));
                     }
 
                     ui.add_space(4.0);
@@ -382,13 +382,12 @@ fn usb_reader_thread(
                     }
                 };
 
-                // passthrough starts ON — virtual device always exists
                 let mut passthrough = true;
 
                 {
                     let mut l = live.lock().unwrap();
                     l.connected = true;
-                    l.locked = true;
+                    l.locked = false; // locked=false means active/passthrough ON
                     l.error_msg.clear();
                 }
                 ctx.request_repaint();
@@ -402,10 +401,10 @@ fn usb_reader_thread(
                     // Check lock/unlock toggle (just flips passthrough, no reconnect)
                     {
                         let mut sig = lock_signal.lock().unwrap();
-                        if let Some(want_locked) = sig.take() {
-                            passthrough = want_locked;
-                            log::info!("passthrough {}", if passthrough { "ON" } else { "OFF" });
-                            live.lock().unwrap().locked = passthrough;
+                        if let Some(want_paused) = sig.take() {
+                            passthrough = !want_paused;
+                            log::info!("tablet {}", if passthrough { "active" } else { "paused" });
+                            live.lock().unwrap().locked = want_paused;
                             ctx.request_repaint();
                         }
                     }
