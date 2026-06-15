@@ -159,7 +159,7 @@ impl Default for Config {
             pen_buttons: PenButtonConfig {
                 stylus: "BTN_STYLUS".into(),
                 eraser: "BTN_STYLUS2".into(),
-                tip: "BTN_LEFT".into(),
+                tip: "none".into(),
             },
         }
     }

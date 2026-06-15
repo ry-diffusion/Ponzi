@@ -7,10 +7,10 @@ resolution_x = 4096
 resolution_y = 4096
 
 [mapping]
-tablet_left = 1303
-tablet_top = 1184
-tablet_right = 3113
-tablet_bottom = 2534
+tablet_left = 0
+tablet_top = 0
+tablet_right = 4095
+tablet_bottom = 4095
 screen_left = 0
 screen_top = 0
 screen_right = 4095
@@ -24,15 +24,15 @@ flip_y = false
 left_hand = false
 
 [pressure]
-touch_threshold = 1180
-pressure_range = 610
+touch_threshold = 1572
+pressure_range = 913
 max_pressure = 65535
-min_pressure_threshold = 5000
-curve = "firm"
+min_pressure_threshold = 0
+curve = "linear"
 gamma = 1.0
 
 [smoothing]
-enabled = true
+enabled = false
 level = 3
 anti_chatter = false
 anti_chatter_threshold = 2
@@ -60,3 +60,4 @@ b12 = ["LEFTALT"]
 [pen_buttons]
 stylus = "BTN_STYLUS"
 eraser = "BTN_STYLUS2"
+tip = "BTN_LEFT"

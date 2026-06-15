@@ -6,6 +6,22 @@ use ponzi_driver::config::{
     ButtonConfig, Config, MappingConfig, OrientationConfig, PenButtonConfig, PressureConfig, SmoothingConfig,
 };
 
+enum CalibState {
+    Idle,
+    Step1 { hover_max: i32 },
+    Step2 { hover_max: i32, light_min: i32 },
+    Step3 { hover_max: i32, light_min: i32, hard_min: i32 },
+}
+
+fn progress_bar(ui: &mut egui::Ui, step: u8) {
+    let (resp, painter) = ui.allocate_painter(Vec2::new(200.0, 6.0), egui::Sense::hover());
+    let rect = resp.rect;
+    painter.rect_filled(rect, 3, theme::BG_INPUT);
+    let fill_w = (step as f32 / 3.0) * rect.width();
+    let fill = egui::Rect::from_min_max(rect.left_top(), Pos2::new(rect.left() + fill_w, rect.bottom()));
+    painter.rect_filled(fill, 3, theme::ACCENT);
+}
+
 fn page_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
     ui.label(theme::section_heading(title));
     if !subtitle.is_empty() {
@@ -435,51 +451,105 @@ pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig, live: &crate::Liv
 
     ui.add_space(6.0);
 
-    // Calibration
+    // Guided calibration
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("AUTO-CALIBRATE"));
-        ui.label(egui::RichText::new("Press light, then press hard. The driver adjusts automatically.").color(theme::TEXT_DIM).size(10.5));
+        ui.label(theme::label_dim("CALIBRATION"));
         ui.add_space(4.0);
 
         thread_local! {
-            static CALIB: std::cell::RefCell<Option<(i32, i32, u32)>> = const { std::cell::RefCell::new(None) };
+            static CALIB: std::cell::RefCell<CalibState> = const { std::cell::RefCell::new(CalibState::Idle) };
         }
 
         CALIB.with(|c| {
-            let mut calib = c.borrow_mut();
-            if calib.is_none() {
-                let btn = egui::Button::new(
-                    egui::RichText::new("▶ Start calibration").size(12.0).color(theme::BG_DEEP)
-                ).fill(theme::ACCENT).corner_radius(2);
-                if ui.add(btn).clicked() {
-                    *calib = Some((i32::MAX, i32::MIN, 0));
-                    log::info!("pressure calibration started");
-                }
-            } else {
-                let c = calib.as_mut().unwrap();
-                let (lightest, hardest, samples) = (&mut c.0, &mut c.1, &mut c.2);
+            let mut state = c.borrow_mut();
 
-                if live.connected && live.pen.pressure_raw > 0 {
-                    let raw = live.pen.pressure_raw;
-                    if raw < *lightest { *lightest = raw; }
-                    if raw > *hardest { *hardest = raw; }
-                    *samples += 1;
-                }
-
-                ui.colored_label(theme::RED, "⬤ Calibrating — press light then hard");
-                ui.label(theme::label_mono(&format!("Light: {}  Hard: {}  Samples: {}", lightest, hardest, samples)));
-
-                let btn = egui::Button::new(
-                    egui::RichText::new("⏹ Apply").size(12.0).color(theme::BG_DEEP)
-                ).fill(theme::ORANGE).corner_radius(2);
-                if ui.add(btn).clicked() {
-                    let (l, h) = (*lightest, *hardest);
-                    if h > l && l < 2000 {
-                        p.touch_threshold = h + 20;
-                        p.pressure_range = h - l + 40;
-                        log::info!("calibrated: threshold={}, range={} (raw {}→{})", p.touch_threshold, p.pressure_range, l, h);
+            match &mut *state {
+                CalibState::Idle => {
+                    ui.label(egui::RichText::new("3-step guided calibration for optimal pressure response").color(theme::TEXT_DIM).size(10.5));
+                    let btn = egui::Button::new(
+                        egui::RichText::new("▶ Start calibration").size(12.0).color(theme::BG_DEEP)
+                    ).fill(theme::ACCENT).corner_radius(2);
+                    if ui.add(btn).clicked() {
+                        *state = CalibState::Step1 { hover_max: 0 };
+                        log::info!("calibration: step 1 — hover");
                     }
-                    *calib = None;
+                }
+
+                CalibState::Step1 { hover_max } => {
+                    ui.colored_label(theme::YELLOW, "Step 1/3 — HOVER");
+                    ui.label("Hold the pen close to the tablet WITHOUT touching. This detects the hover noise floor.");
+                    ui.add_space(4.0);
+                    progress_bar(ui, 1);
+
+                    if live.connected && live.pen.pressure_raw > 0 {
+                        *hover_max = (*hover_max).max(live.pen.pressure_raw);
+                    }
+                    ui.label(theme::label_mono(&format!("Hover max: {}", hover_max)));
+
+                    let btn = egui::Button::new("Next →").fill(theme::ACCENT).corner_radius(2);
+                    if ui.add(btn).clicked() {
+                        let hm = *hover_max;
+                        *state = CalibState::Step2 { hover_max: hm, light_min: i32::MAX };
+                        log::info!("calibration: step 2 — light touch (hover_max={})", hm);
+                    }
+                }
+
+                CalibState::Step2 { hover_max, light_min } => {
+                    ui.colored_label(theme::ACCENT, "Step 2/3 — LIGHT TOUCH");
+                    ui.label("Gently touch the tablet with the lightest pressure you'd use while drawing.");
+                    ui.add_space(4.0);
+                    progress_bar(ui, 2);
+
+                    if live.connected && live.pen.pressure_raw > 0 && live.pen.pressure_raw < *hover_max {
+                        *light_min = (*light_min).min(live.pen.pressure_raw);
+                    }
+                    ui.label(theme::label_mono(&format!("Light min: {}", if *light_min == i32::MAX { 0 } else { *light_min })));
+
+                    let btn = egui::Button::new("Next →").fill(theme::ACCENT).corner_radius(2);
+                    if ui.add(btn).clicked() {
+                        let (hm, lm) = (*hover_max, *light_min);
+                        *state = CalibState::Step3 { hover_max: hm, light_min: lm, hard_min: i32::MAX };
+                        log::info!("calibration: step 3 — hard press (light_min={})", lm);
+                    }
+                }
+
+                CalibState::Step3 { hover_max, light_min, hard_min } => {
+                    ui.colored_label(theme::ORANGE, "Step 3/3 — HARD PRESS");
+                    ui.label("Press as hard as you'd ever press while drawing. Give it your maximum.");
+                    ui.add_space(4.0);
+                    progress_bar(ui, 3);
+
+                    if live.connected && live.pen.pressure_raw > 0 {
+                        *hard_min = (*hard_min).min(live.pen.pressure_raw);
+                    }
+                    ui.label(theme::label_mono(&format!("Hard min: {}", if *hard_min == i32::MAX { 0 } else { *hard_min })));
+
+                    let btn = egui::Button::new(
+                        egui::RichText::new("✓ Apply").color(theme::BG_DEEP)
+                    ).fill(theme::GREEN).corner_radius(2);
+                    if ui.add(btn).clicked() {
+                        let (hm, lm, hrd) = (*hover_max, *light_min, *hard_min);
+                        if lm < hm && hrd < lm {
+                            p.touch_threshold = lm + ((hm - lm) / 2);
+                            p.pressure_range = lm - hrd + 20;
+                            p.min_pressure_threshold = 0;
+                            log::info!("calibrated: threshold={} range={} (hover={} light={} hard={})",
+                                p.touch_threshold, p.pressure_range, hm, lm, hrd);
+                        } else {
+                            log::warn!("calibration values invalid: hover={} light={} hard={}", hm, lm, hrd);
+                        }
+                        *state = CalibState::Idle;
+                    }
+                }
+            }
+
+            if !matches!(*state, CalibState::Idle) {
+                ui.add_space(4.0);
+                let cancel = egui::Button::new(
+                    egui::RichText::new("Cancel").color(theme::TEXT_DIM).size(11.0)
+                ).fill(theme::BG_ELEVATED).corner_radius(2);
+                if ui.add(cancel).clicked() {
+                    *state = CalibState::Idle;
                 }
             }
         });

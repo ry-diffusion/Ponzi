@@ -2659,7 +2659,7 @@ dependencies = [
 
 [[package]]
 name = "ponzi-driver"
-version = "0.1.0"
+version = "2026.6.15"
 dependencies = [
  "env_logger",
  "evdev",
@@ -2672,7 +2672,7 @@ dependencies = [
 
 [[package]]
 name = "ponzi-ui"
-version = "0.1.0"
+version = "2026.6.15"
 dependencies = [
  "ctrlc",
  "eframe",

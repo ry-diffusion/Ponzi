@@ -68,4 +68,4 @@ b12 = ["LEFTALT"]
 stylus = "BTN_STYLUS"
 eraser = "BTN_STYLUS2"
 # Tip touch action: "BTN_LEFT" (click), "BTN_RIGHT", "BTN_MIDDLE", or "none"
-tip = "BTN_LEFT"
+tip = "none"

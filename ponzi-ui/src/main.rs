@@ -278,7 +278,7 @@ impl eframe::App for PonziApp {
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     ui.label(egui::RichText::new("PONZI").color(theme::ACCENT).size(18.0).strong());
-                    ui.label(egui::RichText::new("v0.1").color(theme::TEXT_DIM).size(10.0));
+                    ui.label(egui::RichText::new(env!("CARGO_PKG_VERSION")).color(theme::TEXT_DIM).size(10.0));
                 });
                 ui.add_space(2.0);
 
