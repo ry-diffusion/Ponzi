@@ -1,15 +1,77 @@
 use eframe::egui;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
 mod pressure_test;
-mod tabs;
+pub mod tabs;
 mod theme;
 
 use ponzi_driver::config::Config;
 use ponzi_driver::protocol::PenData;
+
+const PROFILES_DIR: &str = "profiles";
+const DEFAULT_PROFILE: &str = "default";
+
+fn profiles_dir() -> PathBuf {
+    let dirs: [PathBuf; 2] = [
+        PathBuf::from(PROFILES_DIR),
+        PathBuf::from("/etc/ponzi/profiles"),
+    ];
+    for d in &dirs {
+        if d.exists() {
+            return d.clone();
+        }
+    }
+    let d = PathBuf::from(PROFILES_DIR);
+    let _ = std::fs::create_dir_all(&d);
+    d
+}
+
+fn list_profiles() -> Vec<String> {
+    let dir = profiles_dir();
+    let mut profiles = vec![DEFAULT_PROFILE.to_string()];
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            if let Some(name) = entry.path().file_stem().and_then(|s| s.to_str()) {
+                let name = name.to_string();
+                if name != DEFAULT_PROFILE && entry.path().extension().map_or(false, |e| e == "toml") {
+                    profiles.push(name);
+                }
+            }
+        }
+    }
+    profiles.sort();
+    profiles.dedup();
+    profiles
+}
+
+fn profile_path(name: &str) -> PathBuf {
+    if name == DEFAULT_PROFILE {
+        let legacy = Path::new("config.toml");
+        if legacy.exists() { return legacy.to_path_buf(); }
+        profiles_dir().join("default.toml")
+    } else {
+        profiles_dir().join(format!("{}.toml", name))
+    }
+}
+
+fn load_profile(name: &str) -> Config {
+    let path = profile_path(name);
+    Config::load(&path).unwrap_or_default()
+}
+
+fn save_profile(name: &str, config: &Config) {
+    let path = profile_path(name);
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    match std::fs::write(&path, config.to_toml()) {
+        Ok(()) => log::debug!("auto-saved profile '{}' to {}", name, path.display()),
+        Err(e) => log::error!("failed to save profile '{}': {}", name, e),
+    }
+}
 
 fn main() -> eframe::Result<()> {
     env_logger::Builder::from_env(
@@ -20,6 +82,13 @@ fn main() -> eframe::Result<()> {
         log::info!("SIGINT received, exiting");
         std::process::exit(0);
     }).ok();
+
+    // Start tray icon in background
+    let _tray_handle = thread::spawn(|| {
+        if let Err(e) = start_tray() {
+            log::warn!("tray icon not available: {}", e);
+        }
+    });
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -39,6 +108,26 @@ fn main() -> eframe::Result<()> {
     )
 }
 
+fn start_tray() -> Result<(), Box<dyn std::error::Error>> {
+    struct PonziTray;
+    impl ksni::Tray for PonziTray {
+        fn title(&self) -> String { "Ponzi".into() }
+        fn icon_name(&self) -> String { "input-tablet".into() }
+        fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
+            vec![
+                ksni::MenuItem::Standard(ksni::menu::StandardItem {
+                    label: "Quit".into(),
+                    activate: Box::new(|_| std::process::exit(0)),
+                    ..Default::default()
+                }),
+            ]
+        }
+    }
+    let service = ksni::TrayService::new(PonziTray);
+    service.run();
+    Ok(())
+}
+
 #[derive(Clone, Default)]
 pub struct LiveData {
     pub pen: PenData,
@@ -50,8 +139,10 @@ pub struct LiveData {
 
 pub struct PonziApp {
     config: Config,
+    prev_config_hash: u64,
     shared_config: Arc<Mutex<Config>>,
-    config_path: String,
+    current_profile: String,
+    profiles: Vec<String>,
     live: Arc<Mutex<LiveData>>,
     lock_signal: Arc<Mutex<Option<bool>>>,
     active_tab: Tab,
@@ -59,6 +150,15 @@ pub struct PonziApp {
     status_timer: f64,
     pressure_test: pressure_test::PressureTest,
     pub automapper: tabs::AutoMapper,
+}
+
+fn config_hash(cfg: &Config) -> u64 {
+    use std::hash::{Hash, Hasher};
+    use std::collections::hash_map::DefaultHasher;
+    let toml = cfg.to_toml();
+    let mut h = DefaultHasher::new();
+    toml.hash(&mut h);
+    h.finish()
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -95,29 +195,18 @@ impl Tab {
             Self::PressureTest => "Test",
         }
     }
-
     const ALL: &[Tab] = &[
         Self::Status, Self::Mapping, Self::Orientation,
         Self::Pressure, Self::Smoothing, Self::Buttons, Self::PressureTest,
     ];
 }
 
-const CONFIG_PATHS: &[&str] = &["config.toml", "/etc/ponzi/config.toml"];
-
 impl PonziApp {
     fn new(cc: &eframe::CreationContext) -> Self {
-        let (config_path, config) = CONFIG_PATHS.iter()
-            .find_map(|p| {
-                log::info!("trying config: {}", p);
-                Config::load(Path::new(p)).ok().map(|c| {
-                    log::info!("loaded config from {}", p);
-                    (p.to_string(), c)
-                })
-            })
-            .unwrap_or_else(|| {
-                log::info!("no config found, using defaults");
-                ("config.toml".to_string(), Config::default())
-            });
+        let current_profile = DEFAULT_PROFILE.to_string();
+        let config = load_profile(&current_profile);
+        let profiles = list_profiles();
+        let prev_config_hash = config_hash(&config);
 
         let shared_config = Arc::new(Mutex::new(config.clone()));
         let live = Arc::new(Mutex::new(LiveData::default()));
@@ -134,8 +223,10 @@ impl PonziApp {
 
         Self {
             config,
+            prev_config_hash,
             shared_config,
-            config_path,
+            current_profile,
+            profiles,
             live,
             lock_signal,
             active_tab: Tab::Status,
@@ -146,18 +237,21 @@ impl PonziApp {
         }
     }
 
-    fn save_config(&mut self) {
-        match std::fs::write(&self.config_path, self.config.to_toml()) {
-            Ok(()) => {
-                log::info!("config saved to {}", self.config_path);
-                self.status_msg = "Configuration saved".into();
-            }
-            Err(e) => {
-                log::error!("saving config: {}", e);
-                self.status_msg = format!("Error: {}", e);
-            }
+    fn auto_save(&mut self) {
+        let h = config_hash(&self.config);
+        if h != self.prev_config_hash {
+            self.prev_config_hash = h;
+            save_profile(&self.current_profile, &self.config);
         }
-        self.status_timer = 3.0;
+    }
+
+    fn switch_profile(&mut self, name: &str) {
+        self.config = load_profile(name);
+        self.current_profile = name.to_string();
+        self.prev_config_hash = config_hash(&self.config);
+        log::info!("switched to profile '{}'", name);
+        self.status_msg = format!("Profile: {}", name);
+        self.status_timer = 2.0;
     }
 }
 
@@ -165,8 +259,9 @@ impl eframe::App for PonziApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let live = self.live.lock().unwrap().clone();
 
-        // Sync UI config → driver (live updates for mapping, pressure, etc)
+        // Sync UI config → driver + auto-save
         *self.shared_config.lock().unwrap() = self.config.clone();
+        self.auto_save();
 
         if self.status_timer > 0.0 {
             self.status_timer -= ctx.input(|i| i.predicted_dt) as f64;
@@ -204,10 +299,29 @@ impl eframe::App for PonziApp {
                     ui.label(egui::RichText::new(&live.error_msg).color(theme::ORANGE).size(9.5));
                 }
 
-                ui.add_space(12.0);
+                ui.add_space(8.0);
+
+                // Profile selector
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Profile").color(theme::TEXT_DIM).size(10.0));
+                    let current = self.current_profile.clone();
+                    egui::ComboBox::from_id_salt("profile_selector")
+                        .selected_text(&current)
+                        .width(100.0)
+                        .show_ui(ui, |ui| {
+                            for profile in &self.profiles.clone() {
+                                if ui.selectable_label(*profile == current, profile).clicked() {
+                                    self.switch_profile(profile);
+                                }
+                            }
+                        });
+                });
+
+                ui.add_space(4.0);
                 ui.separator();
                 ui.add_space(8.0);
 
+                // Nav items
                 for &tab in Tab::ALL {
                     let selected = self.active_tab == tab;
                     let resp = ui.allocate_ui(egui::vec2(ui.available_width(), 28.0), |ui| {
@@ -252,20 +366,24 @@ impl eframe::App for PonziApp {
                         ui.add_space(4.0);
                     }
 
+                    // New profile button
                     ui.horizontal(|ui| {
-                        let save_btn = egui::Button::new(
-                            egui::RichText::new("Save").color(theme::BG_DEEP).size(12.0)
-                        ).fill(theme::ACCENT).corner_radius(3);
-                        if ui.add_sized([76.0, 28.0], save_btn).clicked() {
-                            self.save_config();
+                        let new_btn = egui::Button::new(
+                            egui::RichText::new("+ New Profile").color(theme::TEXT_SECONDARY).size(11.0)
+                        ).fill(theme::BG_ELEVATED).corner_radius(3);
+                        if ui.add_sized([ui.available_width() / 2.0 - 4.0, 24.0], new_btn).clicked() {
+                            let name = format!("profile_{}", self.profiles.len());
+                            save_profile(&name, &self.config);
+                            self.profiles = list_profiles();
+                            self.switch_profile(&name);
                         }
 
                         let reset_btn = egui::Button::new(
-                            egui::RichText::new("Reset").color(theme::TEXT_SECONDARY).size(12.0)
+                            egui::RichText::new("Reset").color(theme::TEXT_SECONDARY).size(11.0)
                         ).fill(theme::BG_ELEVATED).corner_radius(3);
-                        if ui.add_sized([60.0, 28.0], reset_btn).clicked() {
+                        if ui.add_sized([ui.available_width(), 24.0], reset_btn).clicked() {
                             self.config = Config::default();
-                            self.status_msg = "Reset".into();
+                            self.status_msg = "Reset to defaults".into();
                             self.status_timer = 2.0;
                         }
                     });
@@ -281,7 +399,6 @@ impl eframe::App for PonziApp {
                             log::info!("user requested PAUSE");
                             *self.lock_signal.lock().unwrap() = Some(true);
                         }
-                        ui.label(egui::RichText::new("Tablet is active").color(theme::TEXT_DIM).size(9.5));
                     } else if live.connected && live.locked {
                         let btn = egui::Button::new(
                             egui::RichText::new("▶ Resume").color(theme::GREEN).size(12.0)
@@ -291,7 +408,6 @@ impl eframe::App for PonziApp {
                             log::info!("user requested RESUME");
                             *self.lock_signal.lock().unwrap() = Some(false);
                         }
-                        ui.label(egui::RichText::new("Passthrough paused").color(theme::TEXT_DIM).size(9.5));
                     }
 
                     ui.add_space(4.0);
@@ -375,7 +491,6 @@ fn usb_reader_thread(
                         l.locked = false;
                         l.error_msg = format!("vdev: {}", e);
                         ctx.request_repaint();
-                        // Still read data for UI even without virtual devices
                         let mut buf = vec![0u8; 64];
                         loop {
                             match tablet.read_input(&mut buf) {
@@ -396,7 +511,7 @@ fn usb_reader_thread(
                 {
                     let mut l = live.lock().unwrap();
                     l.connected = true;
-                    l.locked = false; // locked=false means active/passthrough ON
+                    l.locked = false;
                     l.error_msg.clear();
                 }
                 ctx.request_repaint();
@@ -407,7 +522,6 @@ fn usb_reader_thread(
                 let mut buf = vec![0u8; 64];
 
                 loop {
-                    // Check lock/unlock toggle (just flips passthrough, no reconnect)
                     {
                         let mut sig = lock_signal.lock().unwrap();
                         if let Some(want_paused) = sig.take() {
@@ -423,7 +537,6 @@ fn usb_reader_thread(
                             let data = PenData::decode(&buf);
 
                             if passthrough {
-                                // Live-update mapping from UI
                                 let cfg = shared_cfg.lock().unwrap();
                                 processor.mapping = cfg.mapping.clone();
                                 processor.orientation = cfg.orientation.clone();
@@ -455,7 +568,6 @@ fn usb_reader_thread(
                     }
                 }
 
-                // Cleanup on disconnect
                 if live.lock().unwrap().connected {
                     log::debug!("connection lost");
                     let mut l = live.lock().unwrap();
@@ -486,18 +598,9 @@ struct DriverState {
 
 impl DriverState {
     fn new(cfg: &Config) -> Result<Self, Box<dyn std::error::Error>> {
-        log::debug!("creating pen: resolution {}x{}, max_pressure {}",
-            cfg.mapping.screen_right - cfg.mapping.screen_left,
-            cfg.mapping.screen_bottom - cfg.mapping.screen_top,
-            cfg.pressure.max_pressure);
         let pen = VirtualPen::new(&cfg.pressure, &cfg.mapping)?;
-
-        log::debug!("creating keyboard device...");
         let keys = VirtualKeys::new(&cfg.buttons)?;
-
-        log::debug!("creating input processor...");
         let processor = InputProcessor::new(cfg);
-
         Ok(Self { pen, keys, processor })
     }
 }
