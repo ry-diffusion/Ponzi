@@ -393,8 +393,36 @@ pub fn orientation_tab(ui: &mut egui::Ui, o: &mut OrientationConfig) {
 
 // ── Pressure ─────────────────────────────────────────────────────────────
 
-pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig) {
+pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig, live: &crate::LiveData) {
     page_heading(ui, "PRESSURE", "Sensitivity and pen response curve");
+
+    // Live readout
+    if live.connected {
+        theme::section_frame().show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(theme::label_dim("RAW"));
+                ui.label(theme::label_mono(&format!("{}", live.pen.pressure_raw)));
+                ui.add_space(12.0);
+
+                let touching = live.pen.pressure_raw < p.touch_threshold;
+                let norm = if touching {
+                    ((p.touch_threshold - live.pen.pressure_raw) as f32 / p.pressure_range as f32)
+                        .clamp(0.0, 1.0).powf(p.gamma_value())
+                } else { 0.0 };
+
+                ui.label(theme::label_dim("OUT"));
+                ui.label(theme::label_mono(&format!("{:.0}%", norm * 100.0)));
+                ui.add_space(12.0);
+
+                let (resp, painter) = ui.allocate_painter(Vec2::new(120.0, 14.0), egui::Sense::hover());
+                let r = resp.rect;
+                painter.rect_filled(r, 2, theme::BG_INPUT);
+                let fill = egui::Rect::from_min_max(r.left_top(), Pos2::new(r.left() + norm * r.width(), r.bottom()));
+                painter.rect_filled(fill, 2, theme::ACCENT);
+            });
+        });
+        ui.add_space(6.0);
+    }
 
     theme::section_frame().show(ui, |ui| {
         egui::Grid::new("p_grid").num_columns(2).spacing([12.0, 6.0]).show(ui, |ui| {
@@ -405,7 +433,59 @@ pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig) {
         });
     });
 
-    ui.add_space(12.0);
+    ui.add_space(6.0);
+
+    // Calibration
+    theme::section_frame().show(ui, |ui| {
+        ui.label(theme::label_dim("AUTO-CALIBRATE"));
+        ui.label(egui::RichText::new("Press light, then press hard. The driver adjusts automatically.").color(theme::TEXT_DIM).size(10.5));
+        ui.add_space(4.0);
+
+        thread_local! {
+            static CALIB: std::cell::RefCell<Option<(i32, i32, u32)>> = const { std::cell::RefCell::new(None) };
+        }
+
+        CALIB.with(|c| {
+            let mut calib = c.borrow_mut();
+            if calib.is_none() {
+                let btn = egui::Button::new(
+                    egui::RichText::new("▶ Start calibration").size(12.0).color(theme::BG_DEEP)
+                ).fill(theme::ACCENT).corner_radius(2);
+                if ui.add(btn).clicked() {
+                    *calib = Some((i32::MAX, i32::MIN, 0));
+                    log::info!("pressure calibration started");
+                }
+            } else {
+                let c = calib.as_mut().unwrap();
+                let (lightest, hardest, samples) = (&mut c.0, &mut c.1, &mut c.2);
+
+                if live.connected && live.pen.pressure_raw > 0 {
+                    let raw = live.pen.pressure_raw;
+                    if raw < *lightest { *lightest = raw; }
+                    if raw > *hardest { *hardest = raw; }
+                    *samples += 1;
+                }
+
+                ui.colored_label(theme::RED, "⬤ Calibrating — press light then hard");
+                ui.label(theme::label_mono(&format!("Light: {}  Hard: {}  Samples: {}", lightest, hardest, samples)));
+
+                let btn = egui::Button::new(
+                    egui::RichText::new("⏹ Apply").size(12.0).color(theme::BG_DEEP)
+                ).fill(theme::ORANGE).corner_radius(2);
+                if ui.add(btn).clicked() {
+                    let (l, h) = (*lightest, *hardest);
+                    if h > l && l < 2000 {
+                        p.touch_threshold = h + 20;
+                        p.pressure_range = h - l + 40;
+                        log::info!("calibrated: threshold={}, range={} (raw {}→{})", p.touch_threshold, p.pressure_range, l, h);
+                    }
+                    *calib = None;
+                }
+            }
+        });
+    });
+
+    ui.add_space(8.0);
 
     theme::section_frame().show(ui, |ui| {
         ui.label(theme::label_dim("PRESSURE CURVE"));

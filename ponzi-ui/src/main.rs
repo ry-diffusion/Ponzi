@@ -425,7 +425,7 @@ impl eframe::App for PonziApp {
                         Tab::Status => tabs::status_tab(ui, &live, &self.config),
                         Tab::Mapping => tabs::mapping_tab(ui, &mut self.config.mapping, &live, &mut self.automapper),
                         Tab::Orientation => tabs::orientation_tab(ui, &mut self.config.orientation),
-                        Tab::Pressure => tabs::pressure_tab(ui, &mut self.config.pressure),
+                        Tab::Pressure => tabs::pressure_tab(ui, &mut self.config.pressure, &live),
                         Tab::Smoothing => tabs::smoothing_tab(ui, &mut self.config.smoothing),
                         Tab::Buttons => tabs::buttons_tab(ui, &mut self.config.buttons, &mut self.config.pen_buttons),
                         Tab::PressureTest => self.pressure_test.show(ui, &live, &self.config),
