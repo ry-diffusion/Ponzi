@@ -7,6 +7,7 @@ resolution_x = 4096
 resolution_y = 4096
 
 [mapping]
+mode = "Absolute"
 tablet_left = 0
 tablet_top = 0
 tablet_right = 4095
@@ -17,6 +18,8 @@ screen_right = 4095
 screen_bottom = 4095
 force_proportions = false
 rotation = 0
+sensitivity_x = 1.0
+sensitivity_y = 1.0
 
 [orientation]
 flip_x = false
@@ -24,15 +27,15 @@ flip_y = false
 left_hand = false
 
 [pressure]
-touch_threshold = 1322
-pressure_range = 431
+touch_threshold = 1510
+pressure_range = 530
 max_pressure = 65535
 min_pressure_threshold = 0
 curve = "linear"
 gamma = 1.0
 
 [smoothing]
-enabled = true
+enabled = false
 level = 3
 anti_chatter = false
 anti_chatter_threshold = 2

@@ -718,18 +718,66 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
     theme::section_frame().show(ui, |ui| {
         ui.label(theme::label_dim("PEN"));
         ui.add_space(4.0);
-        egui::Grid::new("pen_btns").num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
+        egui::Grid::new("pen_btns").num_columns(2).spacing([12.0, 6.0]).show(ui, |ui| {
             ui.label("Tip touch");
-            ui.add_sized([200.0, 22.0], egui::TextEdit::singleline(&mut pen.tip));
+            let tip_options = [
+                ("none", "No click"),
+                ("BTN_LEFT", "Left click"),
+                ("BTN_RIGHT", "Right click"),
+                ("BTN_MIDDLE", "Middle click"),
+            ];
+            egui::ComboBox::from_id_salt("tip_select")
+                .selected_text(tip_options.iter().find(|(v, _)| *v == pen.tip).map(|(_, l)| *l).unwrap_or(&pen.tip))
+                .width(160.0)
+                .show_ui(ui, |ui| {
+                    for (val, label) in &tip_options {
+                        if ui.selectable_label(pen.tip == *val, *label).clicked() {
+                            pen.tip = val.to_string();
+                        }
+                    }
+                });
             ui.end_row();
+
             ui.label("Lower barrel");
-            ui.add_sized([200.0, 22.0], egui::TextEdit::singleline(&mut pen.stylus));
+            let barrel_options = [
+                ("BTN_STYLUS", "Pen button"),
+                ("BTN_LEFT", "Left click"),
+                ("BTN_RIGHT", "Right click"),
+                ("BTN_MIDDLE", "Middle click"),
+                ("none", "Disabled"),
+            ];
+            egui::ComboBox::from_id_salt("stylus_select")
+                .selected_text(barrel_options.iter().find(|(v, _)| *v == pen.stylus).map(|(_, l)| *l).unwrap_or(&pen.stylus))
+                .width(160.0)
+                .show_ui(ui, |ui| {
+                    for (val, label) in &barrel_options {
+                        if ui.selectable_label(pen.stylus == *val, *label).clicked() {
+                            pen.stylus = val.to_string();
+                        }
+                    }
+                });
             ui.end_row();
+
             ui.label("Upper barrel");
-            ui.add_sized([200.0, 22.0], egui::TextEdit::singleline(&mut pen.eraser));
+            let eraser_options = [
+                ("BTN_STYLUS2", "Eraser button"),
+                ("BTN_LEFT", "Left click"),
+                ("BTN_RIGHT", "Right click"),
+                ("BTN_MIDDLE", "Middle click"),
+                ("none", "Disabled"),
+            ];
+            egui::ComboBox::from_id_salt("eraser_select")
+                .selected_text(eraser_options.iter().find(|(v, _)| *v == pen.eraser).map(|(_, l)| *l).unwrap_or(&pen.eraser))
+                .width(160.0)
+                .show_ui(ui, |ui| {
+                    for (val, label) in &eraser_options {
+                        if ui.selectable_label(pen.eraser == *val, *label).clicked() {
+                            pen.eraser = val.to_string();
+                        }
+                    }
+                });
             ui.end_row();
         });
-        ui.label(egui::RichText::new("Tip: BTN_LEFT (click), BTN_RIGHT, BTN_MIDDLE, or none").color(theme::TEXT_DIM).size(10.0));
     });
 
     ui.add_space(12.0);
