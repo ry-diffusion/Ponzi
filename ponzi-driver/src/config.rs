@@ -2,7 +2,7 @@ use evdev::KeyCode;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Config {
     pub device: DeviceConfig,
     pub tablet: TabletConfig,
@@ -14,7 +14,7 @@ pub struct Config {
     pub pen_buttons: PenButtonConfig,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct DeviceConfig {
     pub vendor_id: u16,
     pub product_id: u16,
@@ -65,7 +65,7 @@ pub struct SmoothingConfig {
     pub anti_chatter_threshold: i32,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct ButtonConfig {
     pub b1: Vec<String>,
     pub b2: Vec<String>,
@@ -81,7 +81,7 @@ pub struct ButtonConfig {
     pub b12: Vec<String>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct PenButtonConfig {
     pub stylus: String,
     pub eraser: String,

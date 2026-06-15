@@ -50,6 +50,7 @@ pub struct LiveData {
 
 pub struct PonziApp {
     config: Config,
+    shared_config: Arc<Mutex<Config>>,
     config_path: String,
     live: Arc<Mutex<LiveData>>,
     lock_signal: Arc<Mutex<Option<bool>>>,
@@ -118,20 +119,22 @@ impl PonziApp {
                 ("config.toml".to_string(), Config::default())
             });
 
+        let shared_config = Arc::new(Mutex::new(config.clone()));
         let live = Arc::new(Mutex::new(LiveData::default()));
         let lock_signal: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
         let live_clone = Arc::clone(&live);
         let lock_clone = Arc::clone(&lock_signal);
+        let cfg_clone = Arc::clone(&shared_config);
         let ctx = cc.egui_ctx.clone();
         let vid = config.device.vendor_id;
         let pid = config.device.product_id;
-        let cfg_clone = Config::default(); // driver uses defaults for virtual device
 
         log::info!("starting USB thread for {:04X}:{:04X}", vid, pid);
         thread::spawn(move || usb_reader_thread(vid, pid, live_clone, lock_clone, ctx, cfg_clone));
 
         Self {
             config,
+            shared_config,
             config_path,
             live,
             lock_signal,
@@ -161,6 +164,9 @@ impl PonziApp {
 impl eframe::App for PonziApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let live = self.live.lock().unwrap().clone();
+
+        // Sync UI config → driver (live updates for mapping, pressure, etc)
+        *self.shared_config.lock().unwrap() = self.config.clone();
 
         if self.status_timer > 0.0 {
             self.status_timer -= ctx.input(|i| i.predicted_dt) as f64;
@@ -328,7 +334,7 @@ fn usb_reader_thread(
     live: Arc<Mutex<LiveData>>,
     lock_signal: Arc<Mutex<Option<bool>>>,
     ctx: egui::Context,
-    cfg: Config,
+    shared_cfg: Arc<Mutex<Config>>,
 ) {
     loop {
         log::debug!("looking for device {:04X}:{:04X}...", vid, pid);
@@ -356,7 +362,8 @@ fn usb_reader_thread(
                 }
                 log::debug!("modeset OK — creating virtual devices...");
 
-                let driver_state = match DriverState::new(&cfg) {
+                let cfg_snapshot = shared_cfg.lock().unwrap().clone();
+                let driver_state = match DriverState::new(&cfg_snapshot) {
                     Ok(ds) => {
                         log::info!("virtual input devices created");
                         ds
@@ -416,6 +423,11 @@ fn usb_reader_thread(
                             let data = PenData::decode(&buf);
 
                             if passthrough {
+                                // Live-update mapping from UI
+                                let cfg = shared_cfg.lock().unwrap();
+                                processor.mapping = cfg.mapping.clone();
+                                processor.orientation = cfg.orientation.clone();
+                                drop(cfg);
                                 processor.process(&data, &mut pen, &mut keys);
                             }
 
