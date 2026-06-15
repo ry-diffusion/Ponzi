@@ -122,8 +122,6 @@ impl Tablet {
     }
 
     pub fn set_full_mode(&self) -> Result<(), UsbError> {
-        self.send_feature_report(&CONFIG_REPORT)?;
-        info!("Sent config report (type 6: high-res, connect mode, full area)");
         self.send_feature_report(&MODESET_REPORT)?;
         info!("Sent modeset report (type 3: 4096x4096 active area)");
         Ok(())
