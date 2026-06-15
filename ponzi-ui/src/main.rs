@@ -12,8 +12,9 @@ use ponzi_driver::config::Config;
 use ponzi_driver::protocol::PenData;
 
 fn main() -> eframe::Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
-        .init();
+    env_logger::Builder::from_env(
+        env_logger::Env::default().default_filter_or("ponzi_ui=debug,ponzi_driver=debug,warn")
+    ).init();
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
