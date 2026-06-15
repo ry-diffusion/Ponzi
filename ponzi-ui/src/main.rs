@@ -12,7 +12,8 @@ use ponzi_driver::config::Config;
 use ponzi_driver::protocol::PenData;
 
 fn main() -> eframe::Result<()> {
-    env_logger::init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+        .init();
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -45,7 +46,7 @@ pub struct PonziApp {
     config: Config,
     config_path: String,
     live: Arc<Mutex<LiveData>>,
-    unlock_signal: Arc<Mutex<bool>>,
+    lock_signal: Arc<Mutex<Option<bool>>>,
     active_tab: Tab,
     status_msg: String,
     status_timer: f64,
@@ -98,24 +99,35 @@ const CONFIG_PATHS: &[&str] = &["config.toml", "/etc/ponzi/config.toml"];
 impl PonziApp {
     fn new(cc: &eframe::CreationContext) -> Self {
         let (config_path, config) = CONFIG_PATHS.iter()
-            .find_map(|p| Config::load(Path::new(p)).ok().map(|c| (p.to_string(), c)))
-            .unwrap_or_else(|| ("config.toml".to_string(), Config::default()));
+            .find_map(|p| {
+                eprintln!("[ponzi] trying config: {}", p);
+                Config::load(Path::new(p)).ok().map(|c| {
+                    eprintln!("[ponzi] loaded config from {}", p);
+                    (p.to_string(), c)
+                })
+            })
+            .unwrap_or_else(|| {
+                eprintln!("[ponzi] no config found, using defaults");
+                ("config.toml".to_string(), Config::default())
+            });
 
         let live = Arc::new(Mutex::new(LiveData::default()));
-        let unlock_signal = Arc::new(Mutex::new(false));
+        let lock_signal: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
         let live_clone = Arc::clone(&live);
-        let unlock_clone = Arc::clone(&unlock_signal);
+        let lock_clone = Arc::clone(&lock_signal);
         let ctx = cc.egui_ctx.clone();
         let vid = config.device.vendor_id;
         let pid = config.device.product_id;
+        let cfg_clone = Config::default(); // driver uses defaults for virtual device
 
-        thread::spawn(move || usb_reader_thread(vid, pid, live_clone, unlock_clone, ctx));
+        eprintln!("[ponzi] starting USB thread for {:04X}:{:04X}", vid, pid);
+        thread::spawn(move || usb_reader_thread(vid, pid, live_clone, lock_clone, ctx, cfg_clone));
 
         Self {
             config,
             config_path,
             live,
-            unlock_signal,
+            lock_signal,
             active_tab: Tab::Status,
             status_msg: String::new(),
             status_timer: 0.0,
@@ -125,8 +137,14 @@ impl PonziApp {
 
     fn save_config(&mut self) {
         match std::fs::write(&self.config_path, self.config.to_toml()) {
-            Ok(()) => self.status_msg = "Configuration saved".into(),
-            Err(e) => self.status_msg = format!("Erro: {}", e),
+            Ok(()) => {
+                eprintln!("[ponzi] config saved to {}", self.config_path);
+                self.status_msg = "Configuration saved".into();
+            }
+            Err(e) => {
+                eprintln!("[ponzi] ERROR saving config: {}", e);
+                self.status_msg = format!("Error: {}", e);
+            }
         }
         self.status_timer = 3.0;
     }
@@ -148,7 +166,6 @@ impl eframe::App for PonziApp {
             .exact_width(theme::SIDEBAR_W)
             .frame(theme::sidebar_frame())
             .show(ctx, |ui| {
-                // Logo / title
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     ui.label(egui::RichText::new("PONZI").color(theme::ACCENT).size(18.0).strong());
@@ -156,12 +173,11 @@ impl eframe::App for PonziApp {
                 });
                 ui.add_space(2.0);
 
-                // Connection status LED
                 ui.horizontal(|ui| {
                     let (color, text) = if live.connected && live.locked {
-                        (theme::GREEN, "Connected")
+                        (theme::GREEN, "Locked (driving)")
                     } else if live.connected {
-                        (theme::YELLOW, "Unlocked")
+                        (theme::YELLOW, "Connected (read-only)")
                     } else {
                         (theme::RED_DIM, "Disconnected")
                     };
@@ -178,7 +194,6 @@ impl eframe::App for PonziApp {
                 ui.separator();
                 ui.add_space(8.0);
 
-                // Nav items
                 for &tab in Tab::ALL {
                     let selected = self.active_tab == tab;
                     let resp = ui.allocate_ui(egui::vec2(ui.available_width(), 28.0), |ui| {
@@ -214,7 +229,7 @@ impl eframe::App for PonziApp {
                     }
                 }
 
-                // Bottom section — lock/unlock + save
+                // Bottom section
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
                     ui.add_space(8.0);
 
@@ -244,24 +259,25 @@ impl eframe::App for PonziApp {
                     ui.add_space(6.0);
 
                     if live.connected && live.locked {
-                        let unlock_btn = egui::Button::new(
+                        let btn = egui::Button::new(
                             egui::RichText::new("⏏ Unlock").color(theme::ORANGE).size(12.0)
                         ).fill(Color32::from_rgb(40, 32, 16)).corner_radius(3)
                          .stroke(Stroke::new(1.0, theme::ORANGE));
-                        if ui.add_sized([ui.available_width(), 30.0], unlock_btn).clicked() {
-                            *self.unlock_signal.lock().unwrap() = true;
+                        if ui.add_sized([ui.available_width(), 30.0], btn).clicked() {
+                            eprintln!("[ponzi] user requested UNLOCK");
+                            *self.lock_signal.lock().unwrap() = Some(false);
                         }
                         ui.label(egui::RichText::new("Release for other apps").color(theme::TEXT_DIM).size(9.5));
                     } else if live.connected && !live.locked {
-                        let lock_frame = egui::Frame::default()
-                            .fill(Color32::from_rgb(30, 36, 20))
-                            .corner_radius(3)
-                            .inner_margin(egui::Margin::symmetric(8, 6))
-                            .stroke(Stroke::new(1.0, Color32::from_rgb(60, 70, 40)));
-                        lock_frame.show(ui, |ui| {
-                            ui.label(egui::RichText::new("Tablet unlocked").color(theme::YELLOW).size(11.0));
-                            ui.label(egui::RichText::new("Other apps can use it").color(theme::TEXT_DIM).size(9.5));
-                        });
+                        let btn = egui::Button::new(
+                            egui::RichText::new("⬤ Lock & Drive").color(theme::GREEN).size(12.0)
+                        ).fill(Color32::from_rgb(16, 36, 24)).corner_radius(3)
+                         .stroke(Stroke::new(1.0, theme::GREEN));
+                        if ui.add_sized([ui.available_width(), 30.0], btn).clicked() {
+                            eprintln!("[ponzi] user requested LOCK (create virtual devices)");
+                            *self.lock_signal.lock().unwrap() = Some(true);
+                        }
+                        ui.label(egui::RichText::new("Tablet in read-only mode").color(theme::TEXT_DIM).size(9.5));
                     }
 
                     ui.add_space(4.0);
@@ -296,12 +312,23 @@ impl eframe::App for PonziApp {
 }
 
 use egui::{Color32, Stroke};
+use ponzi_driver::usb::Tablet;
+use ponzi_driver::virtual_device::{InputProcessor, VirtualKeys, VirtualPen};
 
-fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, unlock: Arc<Mutex<bool>>, ctx: egui::Context) {
+fn usb_reader_thread(
+    vid: u16, pid: u16,
+    live: Arc<Mutex<LiveData>>,
+    lock_signal: Arc<Mutex<Option<bool>>>,
+    ctx: egui::Context,
+    cfg: Config,
+) {
     loop {
-        match ponzi_driver::usb::Tablet::open(vid, pid) {
+        eprintln!("[ponzi-usb] looking for device {:04X}:{:04X}...", vid, pid);
+        match Tablet::open(vid, pid) {
             Ok(mut tablet) => {
+                eprintln!("[ponzi-usb] device found, initializing...");
                 if let Err(e) = tablet.init() {
+                    eprintln!("[ponzi-usb] ERROR init: {}", e);
                     let mut l = live.lock().unwrap();
                     l.connected = false;
                     l.error_msg = format!("init: {}", e);
@@ -309,7 +336,9 @@ fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, unlock: Arc
                     thread::sleep(Duration::from_secs(3));
                     continue;
                 }
+                eprintln!("[ponzi-usb] init OK, sending modeset...");
                 if let Err(e) = tablet.set_full_mode() {
+                    eprintln!("[ponzi-usb] ERROR modeset: {}", e);
                     let mut l = live.lock().unwrap();
                     l.connected = false;
                     l.error_msg = format!("modeset: {}", e);
@@ -317,32 +346,61 @@ fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, unlock: Arc
                     thread::sleep(Duration::from_secs(3));
                     continue;
                 }
+                eprintln!("[ponzi-usb] modeset OK — connected in read-only mode");
+
+                // Start in read-only (unlocked) mode — no virtual devices yet
+                let mut driver_state: Option<DriverState> = None;
 
                 {
                     let mut l = live.lock().unwrap();
                     l.connected = true;
-                    l.locked = true;
+                    l.locked = false;
                     l.error_msg.clear();
                 }
                 ctx.request_repaint();
 
                 let mut buf = vec![0u8; 64];
                 loop {
+                    // Check lock/unlock signals
                     {
-                        let mut sig = unlock.lock().unwrap();
-                        if *sig {
-                            *sig = false;
-                            tablet.release();
-                            let mut l = live.lock().unwrap();
-                            l.locked = false;
-                            ctx.request_repaint();
-                            break;
+                        let mut sig = lock_signal.lock().unwrap();
+                        if let Some(want_locked) = sig.take() {
+                            if want_locked && driver_state.is_none() {
+                                eprintln!("[ponzi-usb] creating virtual input devices...");
+                                match DriverState::new(&cfg) {
+                                    Ok(ds) => {
+                                        eprintln!("[ponzi-usb] virtual devices created OK");
+                                        driver_state = Some(ds);
+                                        live.lock().unwrap().locked = true;
+                                        ctx.request_repaint();
+                                    }
+                                    Err(e) => {
+                                        eprintln!("[ponzi-usb] ERROR creating virtual devices: {}", e);
+                                        let mut l = live.lock().unwrap();
+                                        l.error_msg = format!("vdev: {}", e);
+                                        ctx.request_repaint();
+                                    }
+                                }
+                            } else if !want_locked && driver_state.is_some() {
+                                eprintln!("[ponzi-usb] dropping virtual devices (unlock)");
+                                driver_state = None;
+                                tablet.release();
+                                live.lock().unwrap().locked = false;
+                                ctx.request_repaint();
+                                break; // exit read loop, will reconnect
+                            }
                         }
                     }
 
                     match tablet.read_input(&mut buf) {
                         Ok(_) => {
                             let data = PenData::decode(&buf);
+
+                            // Feed virtual devices if locked
+                            if let Some(ref mut ds) = driver_state {
+                                ds.processor.process(&data, &mut ds.pen, &mut ds.keys);
+                            }
+
                             let mut l = live.lock().unwrap();
                             l.pen = data;
                             let threshold = 1510;
@@ -355,13 +413,21 @@ fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, unlock: Arc
                                 }
                             }
                         }
-                        Err(rusb::Error::NoDevice) => break,
+                        Err(rusb::Error::NoDevice) => {
+                            eprintln!("[ponzi-usb] device disconnected (NoDevice)");
+                            break;
+                        }
                         Err(rusb::Error::Timeout) => {}
-                        Err(_) => break,
+                        Err(e) => {
+                            eprintln!("[ponzi-usb] read error: {}", e);
+                            break;
+                        }
                     }
                 }
 
-                if live.lock().unwrap().locked {
+                // Cleanup on disconnect
+                if live.lock().unwrap().connected {
+                    eprintln!("[ponzi-usb] connection lost");
                     let mut l = live.lock().unwrap();
                     l.connected = false;
                     l.locked = false;
@@ -370,6 +436,7 @@ fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, unlock: Arc
                 }
             }
             Err(e) => {
+                eprintln!("[ponzi-usb] device not found: {}", e);
                 let mut l = live.lock().unwrap();
                 l.connected = false;
                 l.locked = false;
@@ -378,5 +445,29 @@ fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, unlock: Arc
             }
         }
         thread::sleep(Duration::from_secs(3));
+    }
+}
+
+struct DriverState {
+    pen: VirtualPen,
+    keys: VirtualKeys,
+    processor: InputProcessor,
+}
+
+impl DriverState {
+    fn new(cfg: &Config) -> Result<Self, Box<dyn std::error::Error>> {
+        eprintln!("[ponzi-vdev] creating pen: resolution {}x{}, max_pressure {}",
+            cfg.mapping.screen_right - cfg.mapping.screen_left,
+            cfg.mapping.screen_bottom - cfg.mapping.screen_top,
+            cfg.pressure.max_pressure);
+        let pen = VirtualPen::new(&cfg.pressure, &cfg.mapping)?;
+
+        eprintln!("[ponzi-vdev] creating keyboard device...");
+        let keys = VirtualKeys::new(&cfg.buttons)?;
+
+        eprintln!("[ponzi-vdev] creating input processor...");
+        let processor = InputProcessor::new(cfg);
+
+        Ok(Self { pen, keys, processor })
     }
 }
