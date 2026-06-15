@@ -17,7 +17,7 @@ fn progress_bar(ui: &mut egui::Ui, step: u8) {
     let (resp, painter) = ui.allocate_painter(Vec2::new(200.0, 6.0), egui::Sense::hover());
     let rect = resp.rect;
     painter.rect_filled(rect, 3, theme::BG_INPUT);
-    let fill_w = (step as f32 / 3.0) * rect.width();
+    let fill_w = (f32::from(step) / 3.0) * rect.width();
     let fill = egui::Rect::from_min_max(rect.left_top(), Pos2::new(rect.left() + fill_w, rect.bottom()));
     painter.rect_filled(fill, 3, theme::ACCENT);
 }
@@ -233,20 +233,7 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig, live: &crate::LiveD
             ui.label(theme::label_dim("AUTO-MAP"));
             ui.add_space(4.0);
 
-            if !auto.active {
-                ui.label(egui::RichText::new("Draw on the tablet to define the active area").color(theme::TEXT_DIM).size(10.5));
-                let btn = egui::Button::new(
-                    egui::RichText::new("▶ Start capture").size(12.0).color(theme::BG_DEEP)
-                ).fill(theme::ACCENT).corner_radius(2);
-                if ui.add(btn).clicked() {
-                    auto.active = true;
-                    auto.min_x = i32::MAX;
-                    auto.min_y = i32::MAX;
-                    auto.max_x = i32::MIN;
-                    auto.max_y = i32::MIN;
-                    auto.samples = 0;
-                }
-            } else {
+            if auto.active {
                 // Capture pen bounds
                 if live.connected && (live.pen.x > 0 || live.pen.y > 0) {
                     auto.min_x = auto.min_x.min(live.pen.x);
@@ -273,6 +260,19 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig, live: &crate::LiveD
                         log::info!("auto-mapped area: ({},{}) → ({},{})", auto.min_x, auto.min_y, auto.max_x, auto.max_y);
                     }
                     auto.active = false;
+                }
+            } else {
+                ui.label(egui::RichText::new("Draw on the tablet to define the active area").color(theme::TEXT_DIM).size(10.5));
+                let btn = egui::Button::new(
+                    egui::RichText::new("▶ Start capture").size(12.0).color(theme::BG_DEEP)
+                ).fill(theme::ACCENT).corner_radius(2);
+                if ui.add(btn).clicked() {
+                    auto.active = true;
+                    auto.min_x = i32::MAX;
+                    auto.min_y = i32::MAX;
+                    auto.max_x = i32::MIN;
+                    auto.max_y = i32::MIN;
+                    auto.samples = 0;
                 }
             }
         });
@@ -352,7 +352,7 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig, live: &crate::LiveD
                     let screen_pct_y = ((raw_y - tl_y) / (tr_y - tl_y) * 100.0) as i32;
                     painter.text(
                         Pos2::new(px + 12.0, py - 4.0), egui::Align2::LEFT_BOTTOM,
-                        format!("Screen {}%,{}%", screen_pct_x, screen_pct_y),
+                        format!("Screen {screen_pct_x}%,{screen_pct_y}%"),
                         egui::FontId::monospace(9.0), theme::YELLOW,
                     );
                 } else {
@@ -506,13 +506,13 @@ pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig, live: &crate::Liv
                     if live.connected && live.pen.pressure_raw > 0 {
                         *hover_max = (*hover_max).max(live.pen.pressure_raw);
                     }
-                    ui.label(theme::label_mono(&format!("Hover max: {}", hover_max)));
+                    ui.label(theme::label_mono(&format!("Hover max: {hover_max}")));
 
                     let btn = egui::Button::new("Next →").fill(theme::ACCENT).corner_radius(2);
                     if ui.add(btn).clicked() {
                         let hm = *hover_max;
                         *state = CalibState::Step2 { hover_max: hm, light_min: i32::MAX };
-                        log::info!("calibration: step 2 — light touch (hover_max={})", hm);
+                        log::info!("calibration: step 2 — light touch (hover_max={hm})");
                     }
                 }
 
@@ -531,7 +531,7 @@ pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig, live: &crate::Liv
                     if ui.add(btn).clicked() {
                         let (hm, lm) = (*hover_max, *light_min);
                         *state = CalibState::Step3 { hover_max: hm, light_min: lm, hard_min: i32::MAX };
-                        log::info!("calibration: step 3 — hard press (light_min={})", lm);
+                        log::info!("calibration: step 3 — hard press (light_min={lm})");
                     }
                 }
 
@@ -558,7 +558,7 @@ pub fn pressure_tab(ui: &mut egui::Ui, p: &mut PressureConfig, live: &crate::Liv
                             log::info!("calibrated: threshold={} range={} (hover={} light={} hard={})",
                                 p.touch_threshold, p.pressure_range, hm, lm, hrd);
                         } else {
-                            log::warn!("calibration values invalid: hover={} light={} hard={}", hm, lm, hrd);
+                            log::warn!("calibration values invalid: hover={hm} light={lm} hard={hrd}");
                         }
                         *state = CalibState::Idle;
                     }
@@ -783,7 +783,7 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
         }
         _ => {}
     }
-    log::info!("applied preset: {}", name);
+    log::info!("applied preset: {name}");
 }
 
 fn get_preset_hints(b: &ButtonConfig) -> [&'static str; 12] {
@@ -868,10 +868,10 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
                     *keys = text.split(',').map(|s| s.trim().to_uppercase()).filter(|s| !s.is_empty()).collect();
                 }
 
-                if !hint.is_empty() {
-                    ui.label(egui::RichText::new(*hint).color(theme::TEXT_DIM).size(9.5));
-                } else {
+                if hint.is_empty() {
                     ui.label("");
+                } else {
+                    ui.label(egui::RichText::new(*hint).color(theme::TEXT_DIM).size(9.5));
                 }
                 ui.end_row();
             }

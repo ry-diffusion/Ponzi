@@ -104,6 +104,7 @@ impl Config {
         Ok(config)
     }
 
+    #[must_use] 
     pub fn to_toml(&self) -> String {
         toml::to_string_pretty(self).unwrap_or_default()
     }
@@ -178,29 +179,33 @@ impl Default for Config {
 }
 
 impl MappingConfig {
+    #[must_use] 
     pub fn tablet_width(&self) -> i32 {
         self.tablet_right - self.tablet_left
     }
 
+    #[must_use] 
     pub fn tablet_height(&self) -> i32 {
         self.tablet_bottom - self.tablet_top
     }
 
+    #[must_use] 
     pub fn screen_width(&self) -> i32 {
         self.screen_right - self.screen_left
     }
 
+    #[must_use] 
     pub fn screen_height(&self) -> i32 {
         self.screen_bottom - self.screen_top
     }
 }
 
 impl PressureConfig {
+    #[must_use] 
     pub fn gamma_value(&self) -> f32 {
         match self.curve.as_str() {
             "soft" => 0.5,
             "firm" => 2.0,
-            "linear" => 1.0,
             "custom" => self.gamma,
             _ => 1.0,
         }
@@ -208,6 +213,7 @@ impl PressureConfig {
 }
 
 impl ButtonConfig {
+    #[must_use] 
     pub fn keys_for(&self, index: usize) -> &[String] {
         match index {
             0 => &self.b1,
@@ -245,10 +251,11 @@ impl ButtonConfig {
     }
 }
 
-/// Parse a key name like "LEFTCTRL" or "BTN_STYLUS" into an evdev KeyCode.
+/// Parse a key name like "LEFTCTRL" or "`BTN_STYLUS`" into an evdev `KeyCode`.
+#[must_use] 
 pub fn parse_key(name: &str) -> Option<KeyCode> {
     let candidates = [
-        format!("KEY_{}", name),
+        format!("KEY_{name}"),
         name.to_string(),
     ];
     for candidate in &candidates {

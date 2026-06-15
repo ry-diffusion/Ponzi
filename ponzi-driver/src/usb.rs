@@ -24,7 +24,7 @@ impl Tablet {
                 let handle = device.open()?;
 
                 match handle.read_product_string_ascii(&descriptor) {
-                    Ok(name) => info!("Found device: {}", name),
+                    Ok(name) => info!("Found device: {name}"),
                     Err(_) => warn!("Found device but could not read product name"),
                 }
 
@@ -54,7 +54,7 @@ impl Tablet {
             let config = match self.device.config_descriptor(i) {
                 Ok(c) => c,
                 Err(e) => {
-                    error!("Could not read config descriptor {}: {}", i, e);
+                    error!("Could not read config descriptor {i}: {e}");
                     continue;
                 }
             };
@@ -69,10 +69,10 @@ impl Tablet {
                     let iface_num = desc.interface_number();
                     self.handle.claim_interface(iface_num)
                         .inspect_err(|&e| {
-                            error!("Could not claim interface {}: {}", iface_num, e);
+                            error!("Could not claim interface {iface_num}: {e}");
                         })?;
                     self.claimed_interfaces.push(iface_num);
-                    info!("Claimed HID interface {}", iface_num);
+                    info!("Claimed HID interface {iface_num}");
 
                     for ep in desc.endpoint_descriptors() {
                         if ep.transfer_type() == TransferType::Interrupt && ep.max_packet_size() == 64 {
@@ -96,11 +96,11 @@ impl Tablet {
         for attempt in 1..=MAX_RETRIES {
             match self.handle.reset() {
                 Ok(()) => {
-                    info!("Device reset on attempt {}", attempt);
+                    info!("Device reset on attempt {attempt}");
                     return Ok(());
                 }
                 Err(e) => {
-                    error!("Reset attempt {} failed: {}", attempt, e);
+                    error!("Reset attempt {attempt} failed: {e}");
                     if attempt == MAX_RETRIES {
                         return Err(e);
                     }
@@ -128,13 +128,13 @@ impl Tablet {
 
     /// Release all claimed HID interfaces back to the kernel.
     /// After this, the kernel usbhid driver re-attaches and apps like
-    /// libinput, xf86-input-wacom, or OpenTabletDriver can use the device.
+    /// libinput, xf86-input-wacom, or `OpenTabletDriver` can use the device.
     pub fn release(&mut self) {
         for &iface in &self.claimed_interfaces {
             if let Err(e) = self.handle.release_interface(iface) {
-                warn!("Could not release interface {}: {}", iface, e);
+                warn!("Could not release interface {iface}: {e}");
             } else {
-                info!("Released interface {}", iface);
+                info!("Released interface {iface}");
             }
         }
         self.claimed_interfaces.clear();

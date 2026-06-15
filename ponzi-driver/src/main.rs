@@ -16,7 +16,7 @@ const CONFIG_PATHS: &[&str] = &["config.toml", "/etc/ponzi/config.toml"];
 fn find_config() -> Config {
     for path in CONFIG_PATHS {
         if let Ok(c) = Config::load(Path::new(path)) {
-            info!("Loaded config from {}", path);
+            info!("Loaded config from {path}");
             return c;
         }
     }
@@ -30,9 +30,9 @@ fn write_pid() {
         let _ = fs::create_dir_all(parent);
     }
     if let Err(e) = fs::write(PID_FILE, pid.to_string()) {
-        error!("Could not write PID file: {}", e);
+        error!("Could not write PID file: {e}");
     } else {
-        info!("PID {} written to {}", pid, PID_FILE);
+        info!("PID {pid} written to {PID_FILE}");
     }
 }
 
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tablet = Tablet::open(vid, pid)?;
     tablet.init()?;
     tablet.set_full_mode()?;
-    info!("Tablet attached (VID {:04X}, PID {:04X})", vid, pid);
+    info!("Tablet attached (VID {vid:04X}, PID {pid:04X})");
 
     let mut pen = VirtualPen::new(&cfg.lock().unwrap())?;
     let mut keys = VirtualKeys::new(&cfg.lock().unwrap())?;

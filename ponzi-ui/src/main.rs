@@ -1,3 +1,18 @@
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::module_name_repetitions,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::too_many_lines,
+    clippy::similar_names,
+    clippy::needless_pass_by_value,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::unnecessary_wraps,
+    clippy::items_after_statements,
+)]
+
 use eframe::egui;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -53,7 +68,7 @@ fn profile_path(name: &str) -> PathBuf {
         if legacy.exists() { return legacy.to_path_buf(); }
         profiles_dir().join("default.toml")
     } else {
-        profiles_dir().join(format!("{}.toml", name))
+        profiles_dir().join(format!("{name}.toml"))
     }
 }
 
@@ -69,7 +84,7 @@ fn save_profile(name: &str, config: &Config) {
     }
     match std::fs::write(&path, config.to_toml()) {
         Ok(()) => log::debug!("auto-saved profile '{}' to {}", name, path.display()),
-        Err(e) => log::error!("failed to save profile '{}': {}", name, e),
+        Err(e) => log::error!("failed to save profile '{name}': {e}"),
     }
 }
 
@@ -86,7 +101,7 @@ fn main() -> eframe::Result<()> {
     // Start tray icon in background
     let _tray_handle = thread::spawn(|| {
         if let Err(e) = start_tray() {
-            log::warn!("tray icon not available: {}", e);
+            log::warn!("tray icon not available: {e}");
         }
     });
 
@@ -218,7 +233,7 @@ impl PonziApp {
         let vid = config.device.vendor_id;
         let pid = config.device.product_id;
 
-        log::info!("starting USB thread for {:04X}:{:04X}", vid, pid);
+        log::info!("starting USB thread for {vid:04X}:{pid:04X}");
         thread::spawn(move || usb_reader_thread(vid, pid, live_clone, lock_clone, ctx, cfg_clone));
 
         Self {
@@ -249,8 +264,8 @@ impl PonziApp {
         self.config = load_profile(name);
         self.current_profile = name.to_string();
         self.prev_config_hash = config_hash(&self.config);
-        log::info!("switched to profile '{}'", name);
-        self.status_msg = format!("Profile: {}", name);
+        log::info!("switched to profile '{name}'");
+        self.status_msg = format!("Profile: {name}");
         self.status_timer = 2.0;
     }
 }
@@ -264,7 +279,7 @@ impl eframe::App for PonziApp {
         self.auto_save();
 
         if self.status_timer > 0.0 {
-            self.status_timer -= ctx.input(|i| i.predicted_dt) as f64;
+            self.status_timer -= f64::from(ctx.input(|i| i.predicted_dt));
             if self.status_timer <= 0.0 {
                 self.status_msg.clear();
             }
@@ -453,25 +468,25 @@ fn usb_reader_thread(
     shared_cfg: Arc<Mutex<Config>>,
 ) {
     loop {
-        log::debug!("looking for device {:04X}:{:04X}...", vid, pid);
+        log::debug!("looking for device {vid:04X}:{pid:04X}...");
         match Tablet::open(vid, pid) {
             Ok(mut tablet) => {
                 log::debug!("device found, initializing...");
                 if let Err(e) = tablet.init() {
-                    log::error!("init: {}", e);
+                    log::error!("init: {e}");
                     let mut l = live.lock().unwrap();
                     l.connected = false;
-                    l.error_msg = format!("init: {}", e);
+                    l.error_msg = format!("init: {e}");
                     ctx.request_repaint();
                     thread::sleep(Duration::from_secs(3));
                     continue;
                 }
                 log::debug!("init OK, sending modeset...");
                 if let Err(e) = tablet.set_full_mode() {
-                    log::error!("modeset: {}", e);
+                    log::error!("modeset: {e}");
                     let mut l = live.lock().unwrap();
                     l.connected = false;
-                    l.error_msg = format!("modeset: {}", e);
+                    l.error_msg = format!("modeset: {e}");
                     ctx.request_repaint();
                     thread::sleep(Duration::from_secs(3));
                     continue;
@@ -484,11 +499,11 @@ fn usb_reader_thread(
                         ds
                     }
                     Err(e) => {
-                        log::error!("failed to create virtual devices: {}", e);
+                        log::error!("failed to create virtual devices: {e}");
                         let mut l = live.lock().unwrap();
                         l.connected = true;
                         l.locked = false;
-                        l.error_msg = format!("vdev: {}", e);
+                        l.error_msg = format!("vdev: {e}");
                         ctx.request_repaint();
                         let mut buf = vec![0u8; 64];
                         loop {
@@ -557,7 +572,7 @@ fn usb_reader_thread(
                         }
                         Err(rusb::Error::Timeout) => {}
                         Err(e) => {
-                            log::error!("read error: {}", e);
+                            log::error!("read error: {e}");
                             break;
                         }
                     }
@@ -573,11 +588,11 @@ fn usb_reader_thread(
                 }
             }
             Err(e) => {
-                log::debug!("device not found: {}", e);
+                log::debug!("device not found: {e}");
                 let mut l = live.lock().unwrap();
                 l.connected = false;
                 l.locked = false;
-                l.error_msg = format!("{}", e);
+                l.error_msg = format!("{e}");
                 ctx.request_repaint();
             }
         }

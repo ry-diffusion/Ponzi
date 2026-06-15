@@ -63,21 +63,21 @@ impl VirtualPen {
             }
         };
 
-        info!("Virtual pen device created (mode: {:?})", mode);
+        info!("Virtual pen device created (mode: {mode:?})");
         Ok(Self { device, pen_in_range: false, mode })
     }
 
     pub fn emit(&mut self, events: &[InputEvent]) {
         if events.is_empty() { return; }
         if let Err(e) = self.device.emit(events) {
-            error!("Failed to emit pen events: {}", e);
+            error!("Failed to emit pen events: {e}");
         }
     }
 
     pub fn set_in_range(&mut self, in_range: bool) {
         if in_range != self.pen_in_range {
             self.pen_in_range = in_range;
-            self.emit(&[KeyEvent::new(KeyCode::BTN_TOOL_PEN, if in_range { 1 } else { 0 }).into()]);
+            self.emit(&[KeyEvent::new(KeyCode::BTN_TOOL_PEN, i32::from(in_range)).into()]);
         }
     }
 }
@@ -109,7 +109,7 @@ impl VirtualKeys {
     pub fn emit(&mut self, events: &[InputEvent]) {
         if events.is_empty() { return; }
         if let Err(e) = self.device.emit(events) {
-            error!("Failed to emit key events: {}", e);
+            error!("Failed to emit key events: {e}");
         }
     }
 }
@@ -119,7 +119,7 @@ fn map_coordinate(raw: i32, tablet_min: i32, tablet_max: i32, screen_min: i32, s
     let tablet_range = tablet_max - tablet_min;
     let screen_range = screen_max - screen_min;
     if tablet_range == 0 { return screen_min; }
-    screen_min + ((clamped - tablet_min) as i64 * screen_range as i64 / tablet_range as i64) as i32
+    screen_min + (i64::from(clamped - tablet_min) * i64::from(screen_range) / i64::from(tablet_range)) as i32
 }
 
 fn normalize_pressure(raw: i32, threshold: i32, range: i32, max: i32, gamma: f32, dead_zone: i32) -> i32 {
@@ -280,16 +280,16 @@ impl InputProcessor {
         let raw_touching = is_touching(data.pressure_raw, pressure.touch_threshold);
         let touching = raw_touching && in_bounds;
         let emit_touch = if smoothing.anti_chatter {
-            if touching != self.prev_touching {
+            if touching == self.prev_touching { self.chatter_count = 0; false } else {
                 self.chatter_count += 1;
                 self.chatter_count >= smoothing.anti_chatter_threshold
-            } else { self.chatter_count = 0; false }
+            }
         } else {
             touching != self.prev_touching
         };
 
         if emit_touch {
-            let v = if touching { 1 } else { 0 };
+            let v = i32::from(touching);
             pen_events.push(KeyEvent::new(KeyCode::BTN_TOUCH, v).into());
             for &kc in &self.tip_keys {
                 pen_events.push(KeyEvent::new(kc, v).into());

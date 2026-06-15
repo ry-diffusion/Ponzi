@@ -24,10 +24,11 @@ pub struct PenData {
 }
 
 impl PenData {
+    #[must_use] 
     pub fn decode(buf: &[u8]) -> Self {
-        let x = u16_be(buf[1], buf[2]) as i32;
-        let y = u16_be(buf[3], buf[4]) as i32;
-        let pressure_raw = u16_be(buf[5], buf[6]) as i32;
+        let x = i32::from(u16_be(buf[1], buf[2]));
+        let y = i32::from(u16_be(buf[3], buf[4]));
+        let pressure_raw = i32::from(u16_be(buf[5], buf[6]));
         let tablet_buttons = u16_be(buf[12], buf[11]) | (0xCC << 8);
         let pen_button = buf[9];
 
@@ -36,7 +37,7 @@ impl PenData {
 }
 
 fn u16_be(high: u8, low: u8) -> u16 {
-    (high as u16) << 8 | low as u16
+    u16::from(high) << 8 | u16::from(low)
 }
 
 /// Which tablet express key is pressed, decoded from the active-low bitmask.
@@ -68,6 +69,7 @@ impl TabletKey {
         }
     }
 
+    #[must_use] 
     pub fn is_pressed(self, flags: u16) -> bool {
         (flags & (1 << self.bit_index())) == 0
     }
@@ -83,6 +85,7 @@ pub enum PenButton {
 impl PenButton {
     pub const ALL: &[PenButton] = &[Self::Stylus, Self::Eraser];
 
+    #[must_use] 
     pub fn from_raw(raw: u8) -> Option<Self> {
         match raw {
             4 => Some(Self::Stylus),
