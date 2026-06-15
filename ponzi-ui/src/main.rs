@@ -209,7 +209,7 @@ impl eframe::App for PonziApp {
                             let rail = egui::Rect::from_min_size(rect.left_top(), egui::vec2(3.0, rect.height()));
                             ui.painter().rect_filled(rail, 1, theme::ACCENT);
                         } else if hovered {
-                            ui.painter().rect_filled(rect, 3, Color32::from_rgba_premultiplied(255, 255, 255, 10));
+                            ui.painter().rect_filled(rect, 3, theme::BG_ELEVATED);
                         }
 
                         let text_color = if selected { theme::BG_DEEP } else if hovered { theme::ACCENT } else { theme::TEXT_SECONDARY };
@@ -347,16 +347,28 @@ fn usb_reader_thread(
                     thread::sleep(Duration::from_secs(3));
                     continue;
                 }
-                log::debug!("modeset OK — connected in read-only mode");
+                log::debug!("modeset OK — creating virtual devices...");
 
-                // Start in read-only (unlocked) mode — no virtual devices yet
-                let mut driver_state: Option<DriverState> = None;
+                let mut driver_state: Option<DriverState> = match DriverState::new(&cfg) {
+                    Ok(ds) => {
+                        log::info!("virtual input devices created");
+                        Some(ds)
+                    }
+                    Err(e) => {
+                        log::error!("failed to create virtual devices: {}", e);
+                        None
+                    }
+                };
 
                 {
                     let mut l = live.lock().unwrap();
                     l.connected = true;
-                    l.locked = false;
-                    l.error_msg.clear();
+                    l.locked = driver_state.is_some();
+                    if !l.locked {
+                        l.error_msg = "virtual device failed".into();
+                    } else {
+                        l.error_msg.clear();
+                    }
                 }
                 ctx.request_repaint();
 

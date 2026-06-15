@@ -1,0 +1,62 @@
+[device]
+vendor_id = 2290
+product_id = 26641
+
+[tablet]
+resolution_x = 4096
+resolution_y = 4096
+
+[mapping]
+tablet_left = 0
+tablet_top = 0
+tablet_right = 4095
+tablet_bottom = 4095
+screen_left = 0
+screen_top = 0
+screen_right = 4095
+screen_bottom = 4095
+force_proportions = false
+rotation = 0
+
+[orientation]
+flip_x = false
+flip_y = false
+left_hand = false
+
+[pressure]
+touch_threshold = 1510
+pressure_range = 530
+max_pressure = 65535
+min_pressure_threshold = 0
+curve = "linear"
+gamma = 1.0
+
+[smoothing]
+enabled = false
+level = 3
+anti_chatter = false
+anti_chatter_threshold = 2
+
+[buttons]
+b1 = ["E"]
+b2 = ["B"]
+b3 = [
+    "LEFTCTRL",
+    "KPMINUS",
+]
+b4 = [
+    "LEFTCTRL",
+    "KPPLUS",
+]
+b5 = ["LEFTBRACE"]
+b6 = ["RIGHTBRACE"]
+b7 = ["SCROLLUP"]
+b8 = ["TAB"]
+b9 = ["SCROLLDOWN"]
+b10 = ["SPACE"]
+b11 = ["LEFTCTRL"]
+b12 = ["LEFTALT"]
+
+[pen_buttons]
+stylus = "BTN_STYLUS"
+eraser = "BTN_STYLUS2"
