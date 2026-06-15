@@ -16,6 +16,11 @@ fn main() -> eframe::Result<()> {
         env_logger::Env::default().default_filter_or("ponzi_ui=debug,ponzi_driver=debug,warn")
     ).init();
 
+    ctrlc::set_handler(move || {
+        log::info!("SIGINT received, exiting");
+        std::process::exit(0);
+    }).ok();
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([960.0, 700.0])
