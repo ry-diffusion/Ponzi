@@ -722,41 +722,41 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("DELETE");          b.b8 = k("LEFTCTRL+D");
             b.b9 = k("LEFTCTRL+A");     b.b10 = k("LEFTSHIFT+1");
             b.b11 = k("S");             b.b12 = k("R");
-            pen.stylus = "BTN_STYLUS".into();  // Zoom in (Ctrl+scroll up via barrel)
-            pen.eraser = "BTN_STYLUS2".into();  // Zoom out
+            pen.stylus = "KEY_EQUAL".into();   // Zoom in (+)
+            pen.eraser = "KEY_MINUS".into();   // Zoom out (-)
             pen.tip = "BTN_LEFT".into();
         }
         "Krita" => {
             b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+LEFTSHIFT+Z");
             b.b3 = k("E");              b.b4 = k("B");
             b.b5 = k("LEFTBRACE");      b.b6 = k("RIGHTBRACE");
-            b.b7 = k("LEFTCTRL+EQUAL"); b.b8 = k("LEFTCTRL+MINUS");
-            b.b9 = k("SPACE");          b.b10 = k("DELETE");
-            b.b11 = k("LEFTCTRL+LEFTSHIFT+E"); b.b12 = k("LEFTCTRL+LEFTALT");
-            pen.stylus = "BTN_MIDDLE".into();  // Pan canvas
-            pen.eraser = "BTN_RIGHT".into();   // Context menu / color picker
+            b.b7 = k("SPACE");          b.b8 = k("LEFTCTRL+LEFTALT");
+            b.b9 = k("DELETE");          b.b10 = k("LEFTCTRL+LEFTSHIFT+E");
+            b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
+            pen.stylus = "KEY_EQUAL".into();   // Zoom in
+            pen.eraser = "KEY_MINUS".into();   // Zoom out
             pen.tip = "BTN_LEFT".into();
         }
         "GIMP" => {
             b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+Y");
             b.b3 = k("P");              b.b4 = k("LEFTSHIFT+E");
             b.b5 = k("LEFTBRACE");      b.b6 = k("RIGHTBRACE");
-            b.b7 = k("EQUAL");          b.b8 = k("MINUS");
-            b.b9 = k("SPACE");          b.b10 = k("O");
-            b.b11 = k("DELETE");         b.b12 = k("LEFTSHIFT+LEFTCTRL+E");
-            pen.stylus = "BTN_MIDDLE".into();  // Pan
-            pen.eraser = "BTN_RIGHT".into();   // Context menu
+            b.b7 = k("SPACE");          b.b8 = k("O");
+            b.b9 = k("DELETE");          b.b10 = k("LEFTSHIFT+LEFTCTRL+E");
+            b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
+            pen.stylus = "KEY_EQUAL".into();   // Zoom in
+            pen.eraser = "KEY_MINUS".into();   // Zoom out
             pen.tip = "BTN_LEFT".into();
         }
         "Inkscape" => {
             b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+Y");
             b.b3 = k("B");              b.b4 = k("P");
             b.b5 = k("S");              b.b6 = k("N");
-            b.b7 = k("EQUAL");          b.b8 = k("MINUS");
-            b.b9 = k("3");              b.b10 = k("SPACE");
-            b.b11 = k("DELETE");         b.b12 = k("F7");
-            pen.stylus = "BTN_MIDDLE".into();  // Pan
-            pen.eraser = "BTN_RIGHT".into();   // Context menu
+            b.b7 = k("SPACE");          b.b8 = k("3");
+            b.b9 = k("DELETE");          b.b10 = k("F7");
+            b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
+            pen.stylus = "KEY_EQUAL".into();   // Zoom in
+            pen.eraser = "KEY_MINUS".into();   // Zoom out
             pen.tip = "BTN_LEFT".into();
         }
         "Blender" => {
@@ -764,10 +764,10 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b3 = k("F");              b.b4 = k("LEFTSHIFT+F");
             b.b5 = k("G");              b.b6 = k("LEFTSHIFT");
             b.b7 = k("M");              b.b8 = k("LEFTCTRL");
-            b.b9 = k("KPPLUS");         b.b10 = k("KPMINUS");
-            b.b11 = k("KP1");           b.b12 = k("X");
-            pen.stylus = "BTN_MIDDLE".into();  // Orbit/pan (essential in Blender)
-            pen.eraser = "BTN_RIGHT".into();   // Context menu
+            b.b9 = k("KP1");            b.b10 = k("X");
+            b.b11 = k("BTN_MIDDLE");    b.b12 = k("DELETE");
+            pen.stylus = "KPPLUS".into();      // Zoom in
+            pen.eraser = "KPMINUS".into();     // Zoom out
             pen.tip = "BTN_LEFT".into();
         }
         "osu!" => {
@@ -777,9 +777,9 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("F4");             b.b8 = k("F5");
             b.b9 = k("F2");             b.b10 = k("TAB");
             b.b11 = k("F12");           b.b12 = k("GRAVE");
-            pen.stylus = "none".into();  // No barrel buttons for osu!
+            pen.stylus = "none".into();
             pen.eraser = "none".into();
-            pen.tip = "BTN_LEFT".into(); // Tap to hit
+            pen.tip = "BTN_LEFT".into();
         }
         _ => {}
     }
