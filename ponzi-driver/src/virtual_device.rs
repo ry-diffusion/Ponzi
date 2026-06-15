@@ -19,46 +19,28 @@ pub struct VirtualKeys {
 }
 
 impl VirtualPen {
-    pub fn new(pressure: &PressureConfig, mapping: &MappingConfig) -> io::Result<Self> {
+    pub fn new(pressure: &PressureConfig, _mapping: &MappingConfig) -> io::Result<Self> {
         let mut keys = AttributeSet::<KeyCode>::new();
         keys.insert(KeyCode::BTN_TOOL_PEN);
-        keys.insert(KeyCode::BTN_TOOL_RUBBER);
         keys.insert(KeyCode::BTN_TOUCH);
         keys.insert(KeyCode::BTN_LEFT);
         keys.insert(KeyCode::BTN_RIGHT);
         keys.insert(KeyCode::BTN_STYLUS);
         keys.insert(KeyCode::BTN_STYLUS2);
 
-        let mut props = AttributeSet::<PropType>::new();
-        props.insert(PropType::DIRECT);
-
-        let abs_max = 4095;
-        let x = UinputAbsSetup::new(
-            AbsoluteAxisCode::ABS_X,
-            AbsInfo::new(0, 0, abs_max, 0, 0, 1),
-        );
-        let y = UinputAbsSetup::new(
-            AbsoluteAxisCode::ABS_Y,
-            AbsInfo::new(0, 0, abs_max, 0, 0, 1),
-        );
-        let press = UinputAbsSetup::new(
-            AbsoluteAxisCode::ABS_PRESSURE,
-            AbsInfo::new(0, 0, pressure.max_pressure, 0, 0, 1),
-        );
-
-        let id = InputId::new(BusType::BUS_USB, 0x08F2, 0x6811, 1);
+        let x = UinputAbsSetup::new(AbsoluteAxisCode::ABS_X, AbsInfo::new(0, 0, 4096, 0, 0, 1));
+        let y = UinputAbsSetup::new(AbsoluteAxisCode::ABS_Y, AbsInfo::new(0, 0, 4096, 0, 0, 1));
+        let press = UinputAbsSetup::new(AbsoluteAxisCode::ABS_PRESSURE, AbsInfo::new(0, 0, pressure.max_pressure, 0, 0, 1));
 
         let device = VirtualDevice::builder()?
-            .name("Ponzi Tablet Pen")
-            .input_id(id)
-            .with_properties(&props)?
+            .name("tablet_pen")
             .with_absolute_axis(&x)?
             .with_absolute_axis(&y)?
             .with_absolute_axis(&press)?
             .with_keys(&keys)?
             .build()?;
 
-        info!("Virtual pen device created (INPUT_PROP_DIRECT, USB bus)");
+        info!("Virtual pen device created (range 0-4096)");
 
         Ok(Self { device, pen_in_range: false })
     }
