@@ -5,11 +5,11 @@ use std::time::Duration;
 const TIMEOUT: Duration = Duration::from_secs(1);
 const MAX_RETRIES: u8 = 5;
 
-// HID class Set_Report request via control transfer
-// bmRequestType: 0x21 = Host-to-device, Class, Interface
-// bRequest: 0x09 = SET_REPORT
-// wValue: 0x0308 = Report Type (Feature=3), Report ID (0x08)
-// wIndex: 2 = Interface number
+// Type 6: configuration report — enables high-res, connect mode, full area
+// Reverse engineered from TabletService.exe via rizin disassembly
+const CONFIG_REPORT: [u8; 8] = [0x08, 0x06, 0x01, 0x03, 0x01, 0x00, 0x00, 0x00];
+
+// Type 3: active area modeset — sets coordinate range to full 4096x4096
 const MODESET_REPORT: [u8; 8] = [0x08, 0x03, 0x00, 0xFF, 0xF0, 0x00, 0xFF, 0xF0];
 
 pub struct Tablet {
@@ -116,18 +116,16 @@ impl Tablet {
         unreachable!()
     }
 
-    /// Send the HID feature report that switches the tablet from Android/partial
-    /// mode to full 4096x4096 PC mode.
+    fn send_feature_report(&self, report: &[u8]) -> Result<(), UsbError> {
+        self.handle.write_control(0x21, 0x09, 0x0308, 2, report, Duration::from_millis(250))?;
+        Ok(())
+    }
+
     pub fn set_full_mode(&self) -> Result<(), UsbError> {
-        self.handle.write_control(
-            0x21,   // bmRequestType: class, interface, host-to-device
-            0x09,   // bRequest: SET_REPORT
-            0x0308, // wValue: Feature report, ID 0x08
-            2,      // wIndex: interface 2
-            &MODESET_REPORT,
-            Duration::from_millis(250),
-        )?;
-        info!("Tablet switched to full PC mode (4096x4096)");
+        self.send_feature_report(&CONFIG_REPORT)?;
+        info!("Sent config report (type 6: high-res, connect mode, full area)");
+        self.send_feature_report(&MODESET_REPORT)?;
+        info!("Sent modeset report (type 3: 4096x4096 active area)");
         Ok(())
     }
 
