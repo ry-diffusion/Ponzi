@@ -71,6 +71,6 @@ b11 = ["S"]
 b12 = ["R"]
 
 [pen_buttons]
-stylus = "KEY_EQUAL"
-eraser = "KEY_MINUS"
+stylus = "SCROLLUP"
+eraser = "SCROLLDOWN"
 tip = "BTN_LEFT"

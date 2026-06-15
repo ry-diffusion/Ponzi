@@ -92,9 +92,9 @@ pub struct ButtonConfig {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct PenButtonConfig {
-    pub stylus: String,
-    pub eraser: String,
-    pub tip: String,
+    pub stylus: Vec<String>,
+    pub eraser: Vec<String>,
+    pub tip: Vec<String>,
 }
 
 impl Config {
@@ -169,9 +169,9 @@ impl Default for Config {
                 b12: vec!["R".into()],                              // Rectangle
             },
             pen_buttons: PenButtonConfig {
-                stylus: "BTN_STYLUS".into(),
-                eraser: "BTN_STYLUS2".into(),
-                tip: "none".into(),
+                stylus: vec!["LEFTCTRL".into(), "EQUAL".into()],
+                eraser: vec!["LEFTCTRL".into(), "MINUS".into()],
+                tip: vec!["BTN_LEFT".into()],
             },
         }
     }

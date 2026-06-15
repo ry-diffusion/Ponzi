@@ -23,16 +23,17 @@ pub struct VirtualKeys {
 impl VirtualPen {
     pub fn new(cfg: &Config) -> io::Result<Self> {
         let mode = cfg.mapping.mode.clone();
-        let tip_key = parse_key(&cfg.pen_buttons.tip);
 
         let mut keys = AttributeSet::<KeyCode>::new();
         keys.insert(KeyCode::BTN_TOOL_PEN);
         keys.insert(KeyCode::BTN_TOUCH);
         keys.insert(KeyCode::BTN_STYLUS);
         keys.insert(KeyCode::BTN_STYLUS2);
-        // Register tip button if configured (needed for osu! clicks)
-        if let Some(kc) = tip_key {
-            keys.insert(kc);
+        // Register all keys used by pen buttons
+        for name in cfg.pen_buttons.tip.iter()
+            .chain(cfg.pen_buttons.stylus.iter())
+            .chain(cfg.pen_buttons.eraser.iter()) {
+            if let Some(kc) = parse_key(name) { keys.insert(kc); }
         }
 
         let press = UinputAbsSetup::new(AbsoluteAxisCode::ABS_PRESSURE, AbsInfo::new(0, 0, cfg.pressure.max_pressure, 0, 0, 1));
@@ -148,9 +149,9 @@ pub struct InputProcessor {
     prev_tablet_buttons: Vec<TabletKey>,
     prev_pen_button: Option<PenButton>,
     button_keys: [Vec<KeyCode>; 12],
-    stylus_key: KeyCode,
-    eraser_key: KeyCode,
-    tip_key: Option<KeyCode>,
+    stylus_keys: Vec<KeyCode>,
+    eraser_keys: Vec<KeyCode>,
+    tip_keys: Vec<KeyCode>,
     smooth_x: f32,
     smooth_y: f32,
     smooth_initialized: bool,
@@ -169,9 +170,12 @@ impl InputProcessor {
                 }
             }
         }
-        let stylus_key = parse_key(&c.pen_buttons.stylus).unwrap_or(KeyCode::BTN_STYLUS);
-        let eraser_key = parse_key(&c.pen_buttons.eraser).unwrap_or(KeyCode::BTN_STYLUS2);
-        let tip_key = parse_key(&c.pen_buttons.tip);
+        let resolve = |keys: &[String]| -> Vec<KeyCode> {
+            keys.iter().filter_map(|k| parse_key(k)).collect()
+        };
+        let stylus_keys = resolve(&c.pen_buttons.stylus);
+        let eraser_keys = resolve(&c.pen_buttons.eraser);
+        let tip_keys = resolve(&c.pen_buttons.tip);
         drop(c);
 
         Self {
@@ -181,7 +185,7 @@ impl InputProcessor {
             prev_tablet_buttons: Vec::new(),
             prev_pen_button: None,
             button_keys,
-            stylus_key, eraser_key, tip_key,
+            stylus_keys, eraser_keys, tip_keys,
             smooth_x: 0.0, smooth_y: 0.0,
             smooth_initialized: false,
             chatter_count: 0,
@@ -281,8 +285,8 @@ impl InputProcessor {
         if emit_touch {
             let v = if touching { 1 } else { 0 };
             pen_events.push(KeyEvent::new(KeyCode::BTN_TOUCH, v).into());
-            if let Some(tip) = self.tip_key {
-                pen_events.push(KeyEvent::new(tip, v).into());
+            for &kc in &self.tip_keys {
+                pen_events.push(KeyEvent::new(kc, v).into());
             }
             if !touching { self.smooth_initialized = false; }
             self.chatter_count = 0;
@@ -291,12 +295,12 @@ impl InputProcessor {
         let cur_pen = PenButton::from_raw(data.pen_button);
         if cur_pen != self.prev_pen_button {
             if let Some(prev) = self.prev_pen_button {
-                let kc = match prev { PenButton::Stylus => self.stylus_key, PenButton::Eraser => self.eraser_key };
-                pen_events.push(KeyEvent::new(kc, 0).into());
+                let keys = match prev { PenButton::Stylus => &self.stylus_keys, PenButton::Eraser => &self.eraser_keys };
+                for &kc in keys { pen_events.push(KeyEvent::new(kc, 0).into()); }
             }
             if let Some(curr) = cur_pen {
-                let kc = match curr { PenButton::Stylus => self.stylus_key, PenButton::Eraser => self.eraser_key };
-                pen_events.push(KeyEvent::new(kc, 1).into());
+                let keys = match curr { PenButton::Stylus => &self.stylus_keys, PenButton::Eraser => &self.eraser_keys };
+                for &kc in keys { pen_events.push(KeyEvent::new(kc, 1).into()); }
             }
         }
 

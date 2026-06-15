@@ -722,9 +722,9 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("DELETE");          b.b8 = k("LEFTCTRL+D");
             b.b9 = k("LEFTCTRL+A");     b.b10 = k("LEFTSHIFT+1");
             b.b11 = k("S");             b.b12 = k("R");
-            pen.stylus = "SCROLLUP".into();    // Zoom in (Ctrl+scroll in Excalidraw)
-            pen.eraser = "SCROLLDOWN".into();  // Zoom out
-            pen.tip = "BTN_LEFT".into();
+            pen.stylus = k("LEFTCTRL+EQUAL");    // Zoom in (Ctrl+scroll in Excalidraw)
+            pen.eraser = k("LEFTCTRL+MINUS");  // Zoom out
+            pen.tip = k("BTN_LEFT");
         }
         "Krita" => {
             b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+LEFTSHIFT+Z");
@@ -733,9 +733,9 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("SPACE");          b.b8 = k("LEFTCTRL+LEFTALT");
             b.b9 = k("DELETE");          b.b10 = k("LEFTCTRL+LEFTSHIFT+E");
             b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
-            pen.stylus = "SCROLLUP".into();
-            pen.eraser = "SCROLLDOWN".into();
-            pen.tip = "BTN_LEFT".into();
+            pen.stylus = k("LEFTCTRL+EQUAL");
+            pen.eraser = k("LEFTCTRL+MINUS");
+            pen.tip = k("BTN_LEFT");
         }
         "GIMP" => {
             b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+Y");
@@ -744,9 +744,9 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("SPACE");          b.b8 = k("O");
             b.b9 = k("DELETE");          b.b10 = k("LEFTSHIFT+LEFTCTRL+E");
             b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
-            pen.stylus = "SCROLLUP".into();
-            pen.eraser = "SCROLLDOWN".into();
-            pen.tip = "BTN_LEFT".into();
+            pen.stylus = k("LEFTCTRL+EQUAL");
+            pen.eraser = k("LEFTCTRL+MINUS");
+            pen.tip = k("BTN_LEFT");
         }
         "Inkscape" => {
             b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+Y");
@@ -755,9 +755,9 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("SPACE");          b.b8 = k("3");
             b.b9 = k("DELETE");          b.b10 = k("F7");
             b.b11 = k("LEFTCTRL+D");    b.b12 = k("LEFTCTRL+A");
-            pen.stylus = "SCROLLUP".into();
-            pen.eraser = "SCROLLDOWN".into();
-            pen.tip = "BTN_LEFT".into();
+            pen.stylus = k("LEFTCTRL+EQUAL");
+            pen.eraser = k("LEFTCTRL+MINUS");
+            pen.tip = k("BTN_LEFT");
         }
         "Blender" => {
             b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+LEFTSHIFT+Z");
@@ -766,9 +766,9 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("M");              b.b8 = k("LEFTCTRL");
             b.b9 = k("KP1");            b.b10 = k("X");
             b.b11 = k("BTN_MIDDLE");    b.b12 = k("DELETE");
-            pen.stylus = "KPPLUS".into();      // Zoom in
-            pen.eraser = "KPMINUS".into();     // Zoom out
-            pen.tip = "BTN_LEFT".into();
+            pen.stylus = k("KPPLUS");      // Zoom in
+            pen.eraser = k("KPMINUS");     // Zoom out
+            pen.tip = k("BTN_LEFT");
         }
         "osu!" => {
             b.b1 = k("Z");              b.b2 = k("X");
@@ -777,9 +777,9 @@ fn apply_preset(name: &str, b: &mut ButtonConfig, pen: &mut PenButtonConfig) {
             b.b7 = k("F4");             b.b8 = k("F5");
             b.b9 = k("F2");             b.b10 = k("TAB");
             b.b11 = k("F12");           b.b12 = k("GRAVE");
-            pen.stylus = "none".into();
-            pen.eraser = "none".into();
-            pen.tip = "BTN_LEFT".into();
+            pen.stylus = k("none");
+            pen.eraser = k("none");
+            pen.tip = k("BTN_LEFT");
         }
         _ => {}
     }
@@ -814,67 +814,23 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
 
     theme::section_frame().show(ui, |ui| {
         ui.label(theme::label_dim("PEN"));
+        ui.label(egui::RichText::new("Keys separated by comma for combos. Ex: LEFTCTRL, EQUAL").color(theme::TEXT_DIM).size(10.0));
         ui.add_space(4.0);
-        let all_actions: &[(&str, &str)] = &[
-            ("none", "Disabled"),
-            ("BTN_LEFT", "Left Click"),
-            ("BTN_RIGHT", "Right Click"),
-            ("BTN_MIDDLE", "Middle Click"),
-            ("BTN_STYLUS", "Stylus"),
-            ("BTN_STYLUS2", "Stylus 2"),
-            ("KEY_EQUAL", "+"),
-            ("KEY_MINUS", "-"),
-            ("KPPLUS", "Numpad +"),
-            ("KPMINUS", "Numpad -"),
-            ("KEY_LEFTCTRL", "Ctrl"),
-            ("KEY_LEFTSHIFT", "Shift"),
-            ("KEY_LEFTALT", "Alt"),
-            ("KEY_SPACE", "Space"),
-            ("KEY_E", "E"),
-            ("KEY_B", "B"),
-            ("KEY_P", "P"),
-            ("KEY_V", "V"),
-            ("KEY_H", "H"),
-            ("KEY_S", "S"),
-            ("KEY_Z", "Z"),
-            ("KEY_DELETE", "Delete"),
-            ("SCROLLUP", "Scroll Up"),
-            ("SCROLLDOWN", "Scroll Down"),
-        ];
 
-        fn action_label<'a>(val: &str, options: &'a [(&str, &str)]) -> &'a str {
-            options.iter().find(|(v, _)| *v == val).map(|(_, l)| *l).unwrap_or_else(|| {
-                options.iter().find(|(v, _)| {
-                    val.strip_prefix("KEY_").map_or(false, |stripped| *v == format!("KEY_{}", stripped))
-                }).map(|(_, l)| *l).unwrap_or("Custom")
-            })
-        }
-
-        fn pen_combo(ui: &mut egui::Ui, id: &str, value: &mut String, options: &[(&str, &str)]) {
-            let label = action_label(value, options);
-            egui::ComboBox::from_id_salt(id)
-                .selected_text(label)
-                .width(170.0)
-                .show_ui(ui, |ui| {
-                    for (val, lbl) in options {
-                        if ui.selectable_label(*value == *val, *lbl).clicked() {
-                            *value = val.to_string();
-                        }
-                    }
-                });
+        fn pen_key_edit(ui: &mut egui::Ui, label: &str, keys: &mut Vec<String>) {
+            ui.label(label);
+            let mut text = keys.join(", ");
+            if ui.add_sized([220.0, 22.0], egui::TextEdit::singleline(&mut text)).changed() {
+                *keys = text.split(',').map(|s| s.trim().to_uppercase()).filter(|s| !s.is_empty()).collect();
+            }
         }
 
         egui::Grid::new("pen_btns").num_columns(2).spacing([12.0, 6.0]).show(ui, |ui| {
-            ui.label("Tip touch");
-            pen_combo(ui, "tip_sel", &mut pen.tip, all_actions);
+            pen_key_edit(ui, "Tip touch", &mut pen.tip);
             ui.end_row();
-
-            ui.label("Lower barrel");
-            pen_combo(ui, "stylus_sel", &mut pen.stylus, all_actions);
+            pen_key_edit(ui, "Lower barrel", &mut pen.stylus);
             ui.end_row();
-
-            ui.label("Upper barrel");
-            pen_combo(ui, "eraser_sel", &mut pen.eraser, all_actions);
+            pen_key_edit(ui, "Upper barrel", &mut pen.eraser);
             ui.end_row();
         });
     });
