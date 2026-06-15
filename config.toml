@@ -24,8 +24,8 @@ flip_y = false
 left_hand = false
 
 [pressure]
-touch_threshold = 1572
-pressure_range = 913
+touch_threshold = 1322
+pressure_range = 431
 max_pressure = 65535
 min_pressure_threshold = 0
 curve = "linear"

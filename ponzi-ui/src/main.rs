@@ -540,6 +540,8 @@ fn usb_reader_thread(
                                 let cfg = shared_cfg.lock().unwrap();
                                 processor.mapping = cfg.mapping.clone();
                                 processor.orientation = cfg.orientation.clone();
+                                processor.pressure = cfg.pressure.clone();
+                                processor.smoothing = cfg.smoothing.clone();
                                 drop(cfg);
                                 processor.process(&data, &mut pen, &mut keys);
                             }
