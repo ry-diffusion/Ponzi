@@ -189,14 +189,14 @@ impl eframe::App for PonziApp {
                         let hovered = resp.hovered();
 
                         if selected {
-                            ui.painter().rect_filled(rect, 3, Color32::from_rgba_premultiplied(0, 212, 170, 35));
+                            ui.painter().rect_filled(rect, 3, theme::ACCENT);
                             let rail = egui::Rect::from_min_size(rect.left_top(), egui::vec2(3.0, rect.height()));
                             ui.painter().rect_filled(rail, 1, theme::ACCENT);
                         } else if hovered {
                             ui.painter().rect_filled(rect, 3, Color32::from_rgba_premultiplied(255, 255, 255, 10));
                         }
 
-                        let text_color = if selected { theme::TEXT_PRIMARY } else if hovered { theme::ACCENT } else { theme::TEXT_SECONDARY };
+                        let text_color = if selected { theme::BG_DEEP } else if hovered { theme::ACCENT } else { theme::TEXT_SECONDARY };
 
                         let icon_pos = egui::pos2(rect.left() + 14.0, rect.center().y);
                         ui.painter().text(icon_pos, egui::Align2::CENTER_CENTER,
