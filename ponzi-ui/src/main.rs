@@ -31,6 +31,7 @@ fn main() -> eframe::Result<()> {
 pub struct LiveData {
     pub pen: PenData,
     pub connected: bool,
+    pub locked: bool,
     pub error_msg: String,
     pub pressure_history: Vec<f32>,
 }
@@ -39,6 +40,7 @@ pub struct PonziApp {
     config: Config,
     config_path: String,
     live: Arc<Mutex<LiveData>>,
+    unlock_signal: Arc<Mutex<bool>>,
     active_tab: Tab,
     status_msg: String,
     pressure_test: pressure_test::PressureTest,
@@ -61,17 +63,20 @@ impl PonziApp {
         let config = Config::load(Path::new(&config_path)).unwrap_or_default();
 
         let live = Arc::new(Mutex::new(LiveData::default()));
+        let unlock_signal = Arc::new(Mutex::new(false));
         let live_clone = Arc::clone(&live);
+        let unlock_clone = Arc::clone(&unlock_signal);
         let ctx = cc.egui_ctx.clone();
         let vid = config.device.vendor_id;
         let pid = config.device.product_id;
 
-        thread::spawn(move || usb_reader_thread(vid, pid, live_clone, ctx));
+        thread::spawn(move || usb_reader_thread(vid, pid, live_clone, unlock_clone, ctx));
 
         Self {
             config,
             config_path,
             live,
+            unlock_signal,
             active_tab: Tab::Status,
             status_msg: String::new(),
             pressure_test: pressure_test::PressureTest::new(),
@@ -102,9 +107,14 @@ impl eframe::App for PonziApp {
                         ui.label(egui::RichText::new(&live.error_msg).small().color(egui::Color32::from_rgb(200, 150, 100)));
                     }
                 }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(egui::RichText::new("sudo necessario para USB").small().color(egui::Color32::from_gray(100)));
-                });
+                if live.connected && live.locked {
+                    if ui.button("Desbloquear").clicked() {
+                        *self.unlock_signal.lock().unwrap() = true;
+                    }
+                    ui.label(egui::RichText::new("(Ponzi controlando)").small());
+                } else if live.connected && !live.locked {
+                    ui.label(egui::RichText::new("(Desbloqueada — outros apps podem usar)").small().color(egui::Color32::from_rgb(200, 200, 100)));
+                }
             });
             ui.horizontal(|ui| {
                 ui.selectable_value(&mut self.active_tab, Tab::Status, "Status");
@@ -155,7 +165,7 @@ impl eframe::App for PonziApp {
     }
 }
 
-fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, ctx: egui::Context) {
+fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, unlock: Arc<Mutex<bool>>, ctx: egui::Context) {
     loop {
         match ponzi_driver::usb::Tablet::open(vid, pid) {
             Ok(mut tablet) => {
@@ -179,12 +189,27 @@ fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, ctx: egui::
                 {
                     let mut l = live.lock().unwrap();
                     l.connected = true;
+                    l.locked = true;
                     l.error_msg.clear();
                 }
                 ctx.request_repaint();
 
                 let mut buf = vec![0u8; 64];
                 loop {
+                    // Check unlock signal
+                    {
+                        let mut sig = unlock.lock().unwrap();
+                        if *sig {
+                            *sig = false;
+                            tablet.release();
+                            let mut l = live.lock().unwrap();
+                            l.locked = false;
+                            ctx.request_repaint();
+                            // Keep thread alive but idle — wait for reconnect
+                            break;
+                        }
+                    }
+
                     match tablet.read_input(&mut buf) {
                         Ok(_) => {
                             let data = PenData::decode(&buf);
@@ -206,14 +231,18 @@ fn usb_reader_thread(vid: u16, pid: u16, live: Arc<Mutex<LiveData>>, ctx: egui::
                     }
                 }
 
-                let mut l = live.lock().unwrap();
-                l.connected = false;
-                l.error_msg = "Dispositivo desconectado".into();
-                ctx.request_repaint();
+                if live.lock().unwrap().locked {
+                    let mut l = live.lock().unwrap();
+                    l.connected = false;
+                    l.locked = false;
+                    l.error_msg = "Dispositivo desconectado".into();
+                    ctx.request_repaint();
+                }
             }
             Err(e) => {
                 let mut l = live.lock().unwrap();
                 l.connected = false;
+                l.locked = false;
                 l.error_msg = format!("{}", e);
                 ctx.request_repaint();
             }

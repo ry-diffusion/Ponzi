@@ -17,6 +17,7 @@ pub struct Tablet {
     handle: DeviceHandle<GlobalContext>,
     descriptor: DeviceDescriptor,
     endpoint: u8,
+    claimed_interfaces: Vec<u8>,
 }
 
 impl Tablet {
@@ -36,6 +37,7 @@ impl Tablet {
                     handle,
                     descriptor,
                     endpoint: 0,
+                    claimed_interfaces: Vec::new(),
                 });
             }
         }
@@ -68,12 +70,14 @@ impl Tablet {
                     }
 
                     // Claim ALL HID interfaces (both the pen data iface and the modeset iface)
-                    self.handle.claim_interface(desc.interface_number())
+                    let iface_num = desc.interface_number();
+                    self.handle.claim_interface(iface_num)
                         .map_err(|e| {
-                            error!("Could not claim interface {}: {}", desc.interface_number(), e);
+                            error!("Could not claim interface {}: {}", iface_num, e);
                             e
                         })?;
-                    info!("Claimed HID interface {}", desc.interface_number());
+                    self.claimed_interfaces.push(iface_num);
+                    info!("Claimed HID interface {}", iface_num);
 
                     for ep in desc.endpoint_descriptors() {
                         if ep.transfer_type() == TransferType::Interrupt && ep.max_packet_size() == 64 {
@@ -129,5 +133,28 @@ impl Tablet {
 
     pub fn read_input(&self, buf: &mut [u8]) -> Result<usize, UsbError> {
         self.handle.read_interrupt(self.endpoint, buf, TIMEOUT)
+    }
+
+    /// Release all claimed HID interfaces back to the kernel.
+    /// After this, the kernel usbhid driver re-attaches and apps like
+    /// libinput, xf86-input-wacom, or OpenTabletDriver can use the device.
+    pub fn release(&mut self) {
+        for &iface in &self.claimed_interfaces {
+            if let Err(e) = self.handle.release_interface(iface) {
+                warn!("Could not release interface {}: {}", iface, e);
+            } else {
+                info!("Released interface {}", iface);
+            }
+        }
+        self.claimed_interfaces.clear();
+        // Attach kernel driver back so usbhid picks it up
+        for iface in [1u8, 2] {
+            let _ = self.handle.attach_kernel_driver(iface);
+        }
+        info!("Tablet unlocked for other applications");
+    }
+
+    pub fn is_claimed(&self) -> bool {
+        !self.claimed_interfaces.is_empty()
     }
 }
