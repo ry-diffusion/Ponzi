@@ -547,13 +547,17 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
         ui.label(theme::label_dim("PEN"));
         ui.add_space(4.0);
         egui::Grid::new("pen_btns").num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
-            ui.label("Lower");
+            ui.label("Tip touch");
+            ui.add_sized([200.0, 22.0], egui::TextEdit::singleline(&mut pen.tip));
+            ui.end_row();
+            ui.label("Lower barrel");
             ui.add_sized([200.0, 22.0], egui::TextEdit::singleline(&mut pen.stylus));
             ui.end_row();
-            ui.label("Upper");
+            ui.label("Upper barrel");
             ui.add_sized([200.0, 22.0], egui::TextEdit::singleline(&mut pen.eraser));
             ui.end_row();
         });
+        ui.label(egui::RichText::new("Tip: BTN_LEFT (click), BTN_RIGHT, BTN_MIDDLE, or none").color(theme::TEXT_DIM).size(10.0));
     });
 
     ui.add_space(12.0);

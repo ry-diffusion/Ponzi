@@ -85,6 +85,7 @@ pub struct ButtonConfig {
 pub struct PenButtonConfig {
     pub stylus: String,
     pub eraser: String,
+    pub tip: String,
 }
 
 impl Config {
@@ -158,6 +159,7 @@ impl Default for Config {
             pen_buttons: PenButtonConfig {
                 stylus: "BTN_STYLUS".into(),
                 eraser: "BTN_STYLUS2".into(),
+                tip: "BTN_LEFT".into(),
             },
         }
     }

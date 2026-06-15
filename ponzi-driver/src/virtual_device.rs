@@ -25,6 +25,7 @@ impl VirtualPen {
         keys.insert(KeyCode::BTN_TOUCH);
         keys.insert(KeyCode::BTN_LEFT);
         keys.insert(KeyCode::BTN_RIGHT);
+        keys.insert(KeyCode::BTN_MIDDLE);
         keys.insert(KeyCode::BTN_STYLUS);
         keys.insert(KeyCode::BTN_STYLUS2);
 
@@ -154,6 +155,7 @@ pub struct InputProcessor {
     button_keys: [Vec<KeyCode>; 12],
     stylus_key: KeyCode,
     eraser_key: KeyCode,
+    tip_key: Option<KeyCode>,
     // Smoothing state
     smooth_x: f32,
     smooth_y: f32,
@@ -176,6 +178,7 @@ impl InputProcessor {
 
         let stylus_key = parse_key(&cfg.pen_buttons.stylus).unwrap_or(KeyCode::BTN_STYLUS);
         let eraser_key = parse_key(&cfg.pen_buttons.eraser).unwrap_or(KeyCode::BTN_STYLUS2);
+        let tip_key = parse_key(&cfg.pen_buttons.tip);
 
         Self {
             prev: PenData::default(),
@@ -190,6 +193,7 @@ impl InputProcessor {
             button_keys,
             stylus_key,
             eraser_key,
+            tip_key,
             smooth_x: 0.0,
             smooth_y: 0.0,
             smooth_initialized: false,
@@ -273,10 +277,14 @@ impl InputProcessor {
         if emit_touch_change {
             if touching {
                 pen_events.push(KeyEvent::new(KeyCode::BTN_TOUCH, 1).into());
-                pen_events.push(KeyEvent::new(KeyCode::BTN_LEFT, 1).into());
+                if let Some(tip) = self.tip_key {
+                    pen_events.push(KeyEvent::new(tip, 1).into());
+                }
             } else {
                 pen_events.push(KeyEvent::new(KeyCode::BTN_TOUCH, 0).into());
-                pen_events.push(KeyEvent::new(KeyCode::BTN_LEFT, 0).into());
+                if let Some(tip) = self.tip_key {
+                    pen_events.push(KeyEvent::new(tip, 0).into());
+                }
                 self.smooth_initialized = false;
             }
             self.chatter_count = 0;
