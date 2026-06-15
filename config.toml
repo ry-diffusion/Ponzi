@@ -71,6 +71,12 @@ b11 = ["S"]
 b12 = ["R"]
 
 [pen_buttons]
-stylus = "SCROLLUP"
-eraser = "SCROLLDOWN"
-tip = "BTN_LEFT"
+stylus = [
+    "LEFTCTRL",
+    "EQUAL",
+]
+eraser = [
+    "LEFTCTRL",
+    "MINUS",
+]
+tip = ["BTN_LEFT"]

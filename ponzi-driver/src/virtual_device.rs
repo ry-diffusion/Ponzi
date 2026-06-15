@@ -83,12 +83,18 @@ impl VirtualPen {
 }
 
 impl VirtualKeys {
-    pub fn new(button_cfg: &ButtonConfig) -> io::Result<Self> {
+    pub fn new(cfg: &Config) -> io::Result<Self> {
         let mut keys = AttributeSet::<KeyCode>::new();
         for i in 0..12 {
-            for name in button_cfg.keys_for(i) {
+            for name in cfg.buttons.keys_for(i) {
                 if let Some(kc) = parse_key(name) { keys.insert(kc); }
             }
+        }
+        // Register pen barrel button keys so they emit from keyboard device
+        for name in cfg.pen_buttons.stylus.iter()
+            .chain(cfg.pen_buttons.eraser.iter())
+            .chain(cfg.pen_buttons.tip.iter()) {
+            if let Some(kc) = parse_key(name) { keys.insert(kc); }
         }
 
         let device = VirtualDevice::builder()?
@@ -295,12 +301,12 @@ impl InputProcessor {
         let cur_pen = PenButton::from_raw(data.pen_button);
         if cur_pen != self.prev_pen_button {
             if let Some(prev) = self.prev_pen_button {
-                let keys = match prev { PenButton::Stylus => &self.stylus_keys, PenButton::Eraser => &self.eraser_keys };
-                for &kc in keys { pen_events.push(KeyEvent::new(kc, 0).into()); }
+                let ks = match prev { PenButton::Stylus => &self.stylus_keys, PenButton::Eraser => &self.eraser_keys };
+                for &kc in ks { key_events.push(KeyEvent::new(kc, 0).into()); }
             }
             if let Some(curr) = cur_pen {
-                let keys = match curr { PenButton::Stylus => &self.stylus_keys, PenButton::Eraser => &self.eraser_keys };
-                for &kc in keys { pen_events.push(KeyEvent::new(kc, 1).into()); }
+                let ks = match curr { PenButton::Stylus => &self.stylus_keys, PenButton::Eraser => &self.eraser_keys };
+                for &kc in ks { key_events.push(KeyEvent::new(kc, 1).into()); }
             }
         }
 

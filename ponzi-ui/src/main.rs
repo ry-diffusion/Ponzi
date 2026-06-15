@@ -595,7 +595,7 @@ impl DriverState {
     fn new(shared_cfg: Arc<Mutex<Config>>) -> Result<Self, Box<dyn std::error::Error>> {
         let cfg = shared_cfg.lock().unwrap();
         let pen = VirtualPen::new(&cfg)?;
-        let keys = VirtualKeys::new(&cfg.buttons)?;
+        let keys = VirtualKeys::new(&cfg)?;
         drop(cfg);
         let processor = InputProcessor::new(shared_cfg);
         Ok(Self { pen, keys, processor })

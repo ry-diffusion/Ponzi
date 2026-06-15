@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Tablet attached (VID {:04X}, PID {:04X})", vid, pid);
 
     let mut pen = VirtualPen::new(&cfg.lock().unwrap())?;
-    let mut keys = VirtualKeys::new(&cfg.lock().unwrap().buttons)?;
+    let mut keys = VirtualKeys::new(&cfg.lock().unwrap())?;
     let mut processor = InputProcessor::new(Arc::clone(&cfg));
     info!("Virtual input devices registered — driver is running");
 
