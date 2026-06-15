@@ -1,0 +1,15 @@
+[package]
+name = "ponzi-driver"
+description = "Linux userspace driver for SZ PING-IT / Gotop T1161 drawing tablets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rusb = "0.9"
+evdev = "0.13"
+signal-hook = "0.4"
+log = "0.4"
+env_logger = "0.11"
+toml = "0.8"
+serde = { version = "1", features = ["derive"] }

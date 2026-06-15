@@ -1,0 +1,9 @@
+# udev rule for SZ PING-IT / Gotop T1161 drawing tablet
+# Instalar em: /etc/udev/rules.d/99-pingit-tablet.rules
+# Depois: sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# Permite acesso sem root ao dispositivo HID (VID 08f2, PID 6811)
+SUBSYSTEM=="usb", ATTR{idVendor}=="08f2", ATTR{idProduct}=="6811", MODE="0666"
+
+# Inicia o serviço quando o tablet é conectado
+SUBSYSTEM=="usb", ATTR{idVendor}=="08f2", ATTR{idProduct}=="6811", ACTION=="add", TAG+="systemd", ENV{SYSTEMD_WANTS}="pingit-tablet-driver.service"

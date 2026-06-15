@@ -1,0 +1,17 @@
+# Serviço systemd para o driver da mesa digitalizadora PingIT T1161
+# Instalar em: /etc/systemd/system/pingit-tablet-driver.service
+# Depois: sudo systemctl daemon-reload && sudo systemctl enable pingit-tablet-driver
+
+[Unit]
+Description=PingIT T1161 Tablet Driver
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/pingit-tablet-driver
+WorkingDirectory=/etc/pingit-tablet
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

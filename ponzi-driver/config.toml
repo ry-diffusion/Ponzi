@@ -1,0 +1,69 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Ponzi — Configuração do driver da mesa digitalizadora
+# Gotop / SZ PING-IT T1161 (VID 08F2, PID 6811)
+# ═══════════════════════════════════════════════════════════════════════════
+
+[device]
+vendor_id = 0x08F2
+product_id = 0x6811
+
+[tablet]
+resolution_x = 4096
+resolution_y = 4096
+
+# ── Mapeamento de Área ────────────────────────────────────────────────────
+[mapping]
+tablet_left = 0
+tablet_top = 0
+tablet_right = 4095
+tablet_bottom = 4095
+
+screen_left = 0
+screen_top = 0
+screen_right = 4095
+screen_bottom = 4095
+
+force_proportions = false
+rotation = 0
+
+# ── Orientação ───────────────────────────────────────────────────────────
+[orientation]
+flip_x = false
+flip_y = false
+left_hand = false
+
+# ── Pressão ──────────────────────────────────────────────────────────────
+[pressure]
+touch_threshold = 1510
+pressure_range = 530
+max_pressure = 65535
+min_pressure_threshold = 0
+curve = "linear"
+gamma = 1.0
+
+# ── Suavização ───────────────────────────────────────────────────────────
+[smoothing]
+enabled = false
+level = 3
+anti_chatter = false
+anti_chatter_threshold = 2
+
+# ── Botões Express (12 botões da mesa) ───────────────────────────────────
+[buttons]
+b1 = ["E"]
+b2 = ["B"]
+b3 = ["LEFTCTRL", "KPMINUS"]
+b4 = ["LEFTCTRL", "KPPLUS"]
+b5 = ["LEFTBRACE"]
+b6 = ["RIGHTBRACE"]
+b7 = ["SCROLLUP"]
+b8 = ["TAB"]
+b9 = ["SCROLLDOWN"]
+b10 = ["SPACE"]
+b11 = ["LEFTCTRL"]
+b12 = ["LEFTALT"]
+
+# ── Botões da Caneta ─────────────────────────────────────────────────────
+[pen_buttons]
+stylus = "BTN_STYLUS"
+eraser = "BTN_STYLUS2"

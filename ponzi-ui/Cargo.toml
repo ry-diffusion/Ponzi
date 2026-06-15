@@ -1,0 +1,19 @@
+[package]
+name = "ponzi-ui"
+description = "GUI configurator for Ponzi tablet driver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+eframe = "0.31"
+egui = "0.31"
+egui_plot = "0.31"
+rusb = "0.9"
+evdev = "0.13"
+log = "0.4"
+env_logger = "0.11"
+toml = "0.8"
+toml_edit = "0.22"
+serde = { version = "1", features = ["derive"] }
+ponzi-driver = { path = "../ponzi-driver" }
