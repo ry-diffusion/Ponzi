@@ -26,8 +26,15 @@ pub struct TabletConfig {
     pub resolution_y: i32,
 }
 
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+pub enum InputMode {
+    Absolute,
+    Relative,
+}
+
 #[derive(Deserialize, Serialize, Clone)]
 pub struct MappingConfig {
+    pub mode: InputMode,
     pub tablet_left: i32,
     pub tablet_top: i32,
     pub tablet_right: i32,
@@ -38,6 +45,8 @@ pub struct MappingConfig {
     pub screen_bottom: i32,
     pub force_proportions: bool,
     pub rotation: i32,
+    pub sensitivity_x: f32,
+    pub sensitivity_y: f32,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -112,6 +121,7 @@ impl Default for Config {
                 resolution_y: 4096,
             },
             mapping: MappingConfig {
+                mode: InputMode::Absolute,
                 tablet_left: 0,
                 tablet_top: 0,
                 tablet_right: 4095,
@@ -122,6 +132,8 @@ impl Default for Config {
                 screen_bottom: 4095,
                 force_proportions: false,
                 rotation: 0,
+                sensitivity_x: 1.0,
+                sensitivity_y: 1.0,
             },
             orientation: OrientationConfig {
                 flip_x: false,

@@ -3,7 +3,7 @@ use egui::{self, Color32, Pos2, Stroke, StrokeKind, Vec2};
 use crate::theme;
 use crate::LiveData;
 use ponzi_driver::config::{
-    ButtonConfig, Config, MappingConfig, OrientationConfig, PenButtonConfig, PressureConfig, SmoothingConfig,
+    ButtonConfig, Config, InputMode, MappingConfig, OrientationConfig, PenButtonConfig, PressureConfig, SmoothingConfig,
 };
 
 enum CalibState {
@@ -193,6 +193,28 @@ pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig, live: &crate::LiveD
         ui.add_space(6.0);
 
         theme::section_frame().show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(theme::label_dim("MODE"));
+                let abs_btn = egui::Button::new(
+                    egui::RichText::new("Absolute").size(11.0)
+                        .color(if m.mode == InputMode::Absolute { theme::BG_DEEP } else { theme::TEXT_SECONDARY })
+                ).fill(if m.mode == InputMode::Absolute { theme::ACCENT } else { theme::BG_ELEVATED }).corner_radius(2);
+                if ui.add(abs_btn).clicked() { m.mode = InputMode::Absolute; }
+
+                let rel_btn = egui::Button::new(
+                    egui::RichText::new("Relative (osu!)").size(11.0)
+                        .color(if m.mode == InputMode::Relative { theme::BG_DEEP } else { theme::TEXT_SECONDARY })
+                ).fill(if m.mode == InputMode::Relative { theme::ACCENT } else { theme::BG_ELEVATED }).corner_radius(2);
+                if ui.add(rel_btn).clicked() { m.mode = InputMode::Relative; }
+            });
+
+            if m.mode == InputMode::Relative {
+                ui.add_space(4.0);
+                ui.add(egui::Slider::new(&mut m.sensitivity_x, 0.1..=10.0).text("Sensitivity X").logarithmic(true));
+                ui.add(egui::Slider::new(&mut m.sensitivity_y, 0.1..=10.0).text("Sensitivity Y").logarithmic(true));
+            }
+
+            ui.add_space(4.0);
             ui.checkbox(&mut m.force_proportions, "Force proportions");
             ui.add_space(4.0);
             ui.horizontal(|ui| {

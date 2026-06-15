@@ -25,6 +25,11 @@ screen_bottom = 4095
 
 force_proportions = false
 rotation = 0
+# "Absolute" = pen position maps to screen position (drawing)
+# "Relative" = pen movement maps to cursor delta (osu!/mouse mode)
+mode = "Absolute"
+sensitivity_x = 1.0
+sensitivity_y = 1.0
 
 # ── Orientação ───────────────────────────────────────────────────────────
 [orientation]

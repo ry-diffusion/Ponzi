@@ -32,7 +32,7 @@ curve = "linear"
 gamma = 1.0
 
 [smoothing]
-enabled = false
+enabled = true
 level = 3
 anti_chatter = false
 anti_chatter_threshold = 2

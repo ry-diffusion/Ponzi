@@ -1,18 +1,19 @@
 use evdev::{
     AbsInfo, AbsoluteAxisCode, AttributeSet, BusType, EventType, InputEvent, InputId,
-    KeyCode, KeyEvent, PropType, UinputAbsSetup,
+    KeyCode, KeyEvent, PropType, RelativeAxisCode, UinputAbsSetup,
     uinput::VirtualDevice,
 };
 use log::{error, info, warn};
 use std::io;
 use std::sync::{Arc, Mutex};
 
-use crate::config::{ButtonConfig, Config, parse_key};
+use crate::config::{ButtonConfig, Config, InputMode, parse_key};
 use crate::protocol::{PenButton, PenData, TabletKey};
 
 pub struct VirtualPen {
     device: VirtualDevice,
     pen_in_range: bool,
+    pub mode: InputMode,
 }
 
 pub struct VirtualKeys {
@@ -21,26 +22,48 @@ pub struct VirtualKeys {
 
 impl VirtualPen {
     pub fn new(cfg: &Config) -> io::Result<Self> {
+        let mode = cfg.mapping.mode.clone();
+        let tip_key = parse_key(&cfg.pen_buttons.tip);
+
         let mut keys = AttributeSet::<KeyCode>::new();
         keys.insert(KeyCode::BTN_TOOL_PEN);
         keys.insert(KeyCode::BTN_TOUCH);
         keys.insert(KeyCode::BTN_STYLUS);
         keys.insert(KeyCode::BTN_STYLUS2);
+        // Register tip button if configured (needed for osu! clicks)
+        if let Some(kc) = tip_key {
+            keys.insert(kc);
+        }
 
-        let x = UinputAbsSetup::new(AbsoluteAxisCode::ABS_X, AbsInfo::new(0, 0, 4096, 0, 0, 1));
-        let y = UinputAbsSetup::new(AbsoluteAxisCode::ABS_Y, AbsInfo::new(0, 0, 4096, 0, 0, 1));
         let press = UinputAbsSetup::new(AbsoluteAxisCode::ABS_PRESSURE, AbsInfo::new(0, 0, cfg.pressure.max_pressure, 0, 0, 1));
 
-        let device = VirtualDevice::builder()?
-            .name("Ponzi Tablet Pen")
-            .with_absolute_axis(&x)?
-            .with_absolute_axis(&y)?
-            .with_absolute_axis(&press)?
-            .with_keys(&keys)?
-            .build()?;
+        let device = match mode {
+            InputMode::Absolute => {
+                let x = UinputAbsSetup::new(AbsoluteAxisCode::ABS_X, AbsInfo::new(0, 0, 4096, 0, 0, 1));
+                let y = UinputAbsSetup::new(AbsoluteAxisCode::ABS_Y, AbsInfo::new(0, 0, 4096, 0, 0, 1));
+                VirtualDevice::builder()?
+                    .name("Ponzi Tablet Pen")
+                    .with_absolute_axis(&x)?
+                    .with_absolute_axis(&y)?
+                    .with_absolute_axis(&press)?
+                    .with_keys(&keys)?
+                    .build()?
+            }
+            InputMode::Relative => {
+                let mut rel = AttributeSet::<RelativeAxisCode>::new();
+                rel.insert(RelativeAxisCode::REL_X);
+                rel.insert(RelativeAxisCode::REL_Y);
+                VirtualDevice::builder()?
+                    .name("Ponzi Tablet Pen (Relative)")
+                    .with_relative_axes(&rel)?
+                    .with_absolute_axis(&press)?
+                    .with_keys(&keys)?
+                    .build()?
+            }
+        };
 
-        info!("Virtual pen device created (range 0-4096)");
-        Ok(Self { device, pen_in_range: false })
+        info!("Virtual pen device created (mode: {:?})", mode);
+        Ok(Self { device, pen_in_range: false, mode })
     }
 
     pub fn emit(&mut self, events: &[InputEvent]) {
@@ -201,20 +224,38 @@ impl InputProcessor {
         let in_bounds = sx >= mapping.tablet_left && sx <= mapping.tablet_right
             && sy >= mapping.tablet_top && sy <= mapping.tablet_bottom;
 
-        if in_bounds {
-            let mx = map_coordinate(sx, mapping.tablet_left, mapping.tablet_right, mapping.screen_left, mapping.screen_right);
-            let my = map_coordinate(sy, mapping.tablet_top, mapping.tablet_bottom, mapping.screen_top, mapping.screen_bottom);
+        match mapping.mode {
+            InputMode::Absolute => {
+                if in_bounds {
+                    let mx = map_coordinate(sx, mapping.tablet_left, mapping.tablet_right, mapping.screen_left, mapping.screen_right);
+                    let my = map_coordinate(sy, mapping.tablet_top, mapping.tablet_bottom, mapping.screen_top, mapping.screen_bottom);
 
-            let (prev_ox, prev_oy) = apply_orientation(
-                self.prev.x, self.prev.y, resolution,
-                orient.flip_x, orient.flip_y, orient.left_hand, mapping.rotation,
-            );
-            let prev_mx = map_coordinate(prev_ox, mapping.tablet_left, mapping.tablet_right, mapping.screen_left, mapping.screen_right);
-            let prev_my = map_coordinate(prev_oy, mapping.tablet_top, mapping.tablet_bottom, mapping.screen_top, mapping.screen_bottom);
+                    let (prev_ox, prev_oy) = apply_orientation(
+                        self.prev.x, self.prev.y, resolution,
+                        orient.flip_x, orient.flip_y, orient.left_hand, mapping.rotation,
+                    );
+                    let prev_mx = map_coordinate(prev_ox, mapping.tablet_left, mapping.tablet_right, mapping.screen_left, mapping.screen_right);
+                    let prev_my = map_coordinate(prev_oy, mapping.tablet_top, mapping.tablet_bottom, mapping.screen_top, mapping.screen_bottom);
 
-            if prev_mx != mx || prev_my != my {
-                pen_events.push(InputEvent::new(EventType::ABSOLUTE.0, AbsoluteAxisCode::ABS_X.0, mx));
-                pen_events.push(InputEvent::new(EventType::ABSOLUTE.0, AbsoluteAxisCode::ABS_Y.0, my));
+                    if prev_mx != mx || prev_my != my {
+                        pen_events.push(InputEvent::new(EventType::ABSOLUTE.0, AbsoluteAxisCode::ABS_X.0, mx));
+                        pen_events.push(InputEvent::new(EventType::ABSOLUTE.0, AbsoluteAxisCode::ABS_Y.0, my));
+                    }
+                }
+            }
+            InputMode::Relative => {
+                let dx = sx - self.prev.x;
+                let dy = sy - self.prev.y;
+                if (dx != 0 || dy != 0) && self.prev.x != 0 {
+                    let rel_x = (dx as f32 * mapping.sensitivity_x) as i32;
+                    let rel_y = (dy as f32 * mapping.sensitivity_y) as i32;
+                    if rel_x != 0 {
+                        pen_events.push(InputEvent::new(EventType::RELATIVE.0, RelativeAxisCode::REL_X.0, rel_x));
+                    }
+                    if rel_y != 0 {
+                        pen_events.push(InputEvent::new(EventType::RELATIVE.0, RelativeAxisCode::REL_Y.0, rel_y));
+                    }
+                }
             }
         }
 
