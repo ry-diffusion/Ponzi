@@ -132,91 +132,196 @@ pub fn status_tab(ui: &mut egui::Ui, live: &LiveData, config: &Config) {
 
 // ── Mapping ──────────────────────────────────────────────────────────────
 
-pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig) {
+#[derive(Default)]
+pub struct AutoMapper {
+    active: bool,
+    min_x: i32,
+    min_y: i32,
+    max_x: i32,
+    max_y: i32,
+    samples: u32,
+}
+
+pub fn mapping_tab(ui: &mut egui::Ui, m: &mut MappingConfig, live: &crate::LiveData, auto: &mut AutoMapper) {
     page_heading(ui, "MAPPING", "Active tablet area and screen destination");
 
-    // Stacked vertically for responsiveness
-    theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("TABLET AREA"));
-        ui.add_space(4.0);
-        egui::Grid::new("t_area").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-            ui.label("Left");   ui.add(egui::Slider::new(&mut m.tablet_left, 0..=4095)); ui.end_row();
-            ui.label("Top");    ui.add(egui::Slider::new(&mut m.tablet_top, 0..=4095)); ui.end_row();
-            ui.label("Right");  ui.add(egui::Slider::new(&mut m.tablet_right, 0..=4095)); ui.end_row();
-            ui.label("Bottom"); ui.add(egui::Slider::new(&mut m.tablet_bottom, 0..=4095)); ui.end_row();
+    // Side-by-side: controls left, preview right
+    ui.columns(2, |cols| {
+        // ── Left column: sliders + options ──
+        let ui = &mut cols[0];
+
+        theme::section_frame().show(ui, |ui| {
+            ui.label(theme::label_dim("TABLET AREA"));
+            ui.add_space(4.0);
+            egui::Grid::new("t_area").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
+                ui.label("Left");   ui.add(egui::Slider::new(&mut m.tablet_left, 0..=4095)); ui.end_row();
+                ui.label("Top");    ui.add(egui::Slider::new(&mut m.tablet_top, 0..=4095)); ui.end_row();
+                ui.label("Right");  ui.add(egui::Slider::new(&mut m.tablet_right, 0..=4095)); ui.end_row();
+                ui.label("Bottom"); ui.add(egui::Slider::new(&mut m.tablet_bottom, 0..=4095)); ui.end_row();
+            });
         });
-    });
 
-    ui.add_space(8.0);
+        ui.add_space(6.0);
 
-    theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("SCREEN AREA"));
-        ui.add_space(4.0);
-        egui::Grid::new("s_area").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-            ui.label("Left");   ui.add(egui::Slider::new(&mut m.screen_left, 0..=4095)); ui.end_row();
-            ui.label("Top");    ui.add(egui::Slider::new(&mut m.screen_top, 0..=4095)); ui.end_row();
-            ui.label("Right");  ui.add(egui::Slider::new(&mut m.screen_right, 0..=4095)); ui.end_row();
-            ui.label("Bottom"); ui.add(egui::Slider::new(&mut m.screen_bottom, 0..=4095)); ui.end_row();
+        theme::section_frame().show(ui, |ui| {
+            ui.label(theme::label_dim("SCREEN AREA"));
+            ui.add_space(4.0);
+            egui::Grid::new("s_area").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
+                ui.label("Left");   ui.add(egui::Slider::new(&mut m.screen_left, 0..=4095)); ui.end_row();
+                ui.label("Top");    ui.add(egui::Slider::new(&mut m.screen_top, 0..=4095)); ui.end_row();
+                ui.label("Right");  ui.add(egui::Slider::new(&mut m.screen_right, 0..=4095)); ui.end_row();
+                ui.label("Bottom"); ui.add(egui::Slider::new(&mut m.screen_bottom, 0..=4095)); ui.end_row();
+            });
         });
-    });
 
-    ui.add_space(8.0);
+        ui.add_space(6.0);
 
-    theme::section_frame().show(ui, |ui| {
-        ui.horizontal(|ui| {
+        theme::section_frame().show(ui, |ui| {
             ui.checkbox(&mut m.force_proportions, "Force proportions");
-            ui.add_space(24.0);
-            ui.label(theme::label_dim("ROTATION"));
-            ui.radio_value(&mut m.rotation, 0, "0°");
-            ui.radio_value(&mut m.rotation, 90, "90°");
-            ui.radio_value(&mut m.rotation, 180, "180°");
-            ui.radio_value(&mut m.rotation, 270, "270°");
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label(theme::label_dim("ROTATION"));
+                ui.radio_value(&mut m.rotation, 0, "0°");
+                ui.radio_value(&mut m.rotation, 90, "90°");
+                ui.radio_value(&mut m.rotation, 180, "180°");
+                ui.radio_value(&mut m.rotation, 270, "270°");
+            });
         });
-    });
 
-    ui.add_space(8.0);
+        ui.add_space(6.0);
 
-    theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("PREVIEW"));
-        ui.add_space(4.0);
-        let pw = ui.available_width().min(450.0);
-        let ps = Vec2::new(pw, pw * 0.55);
-        let (resp, painter) = ui.allocate_painter(ps, egui::Sense::hover());
-        let rect = resp.rect;
-        painter.rect_filled(rect, 2, theme::BG_INPUT);
+        // Automapper
+        theme::section_frame().show(ui, |ui| {
+            ui.label(theme::label_dim("AUTO-MAP"));
+            ui.add_space(4.0);
 
-        for i in 1..8 {
-            let t = i as f32 / 8.0;
-            painter.line_segment(
-                [Pos2::new(rect.left() + t * rect.width(), rect.top()), Pos2::new(rect.left() + t * rect.width(), rect.bottom())],
-                Stroke::new(0.5, Color32::from_rgb(25, 30, 36)));
-            painter.line_segment(
-                [Pos2::new(rect.left(), rect.top() + t * rect.height()), Pos2::new(rect.right(), rect.top() + t * rect.height())],
-                Stroke::new(0.5, Color32::from_rgb(25, 30, 36)));
-        }
+            if !auto.active {
+                ui.label(egui::RichText::new("Draw on the tablet to define the active area").color(theme::TEXT_DIM).size(10.5));
+                let btn = egui::Button::new(
+                    egui::RichText::new("▶ Start capture").size(12.0).color(theme::BG_DEEP)
+                ).fill(theme::ACCENT).corner_radius(2);
+                if ui.add(btn).clicked() {
+                    auto.active = true;
+                    auto.min_x = i32::MAX;
+                    auto.min_y = i32::MAX;
+                    auto.max_x = i32::MIN;
+                    auto.max_y = i32::MIN;
+                    auto.samples = 0;
+                }
+            } else {
+                // Capture pen bounds
+                if live.connected && (live.pen.x > 0 || live.pen.y > 0) {
+                    auto.min_x = auto.min_x.min(live.pen.x);
+                    auto.min_y = auto.min_y.min(live.pen.y);
+                    auto.max_x = auto.max_x.max(live.pen.x);
+                    auto.max_y = auto.max_y.max(live.pen.y);
+                    auto.samples += 1;
+                }
 
-        let tl = Pos2::new(
-            rect.left() + (m.tablet_left as f32 / 4095.0) * rect.width(),
-            rect.top() + (m.tablet_top as f32 / 4095.0) * rect.height(),
-        );
-        let br = Pos2::new(
-            rect.left() + (m.tablet_right as f32 / 4095.0) * rect.width(),
-            rect.top() + (m.tablet_bottom as f32 / 4095.0) * rect.height(),
-        );
-        let active = egui::Rect::from_min_max(tl, br);
-        painter.rect_filled(active, 0, Color32::from_rgba_premultiplied(0, 212, 170, 20));
-        painter.rect_stroke(active, 0, Stroke::new(1.5, theme::ACCENT), StrokeKind::Outside);
+                ui.label(egui::RichText::new("⬤ Capturing — draw across the area you want to use")
+                    .color(theme::RED).size(11.0));
+                ui.label(theme::label_mono(&format!("Samples: {}  Area: ({},{}) → ({},{})",
+                    auto.samples, auto.min_x, auto.min_y, auto.max_x, auto.max_y)));
 
-        for corner in [active.left_top(), active.right_top(), active.left_bottom(), active.right_bottom()] {
-            painter.rect_filled(egui::Rect::from_center_size(corner, Vec2::splat(6.0)), 1, theme::ACCENT);
-        }
+                let btn = egui::Button::new(
+                    egui::RichText::new("⏹ Apply").size(12.0).color(theme::BG_DEEP)
+                ).fill(theme::ORANGE).corner_radius(2);
+                if ui.add(btn).clicked() {
+                    if auto.samples > 10 && auto.max_x > auto.min_x && auto.max_y > auto.min_y {
+                        m.tablet_left = auto.min_x;
+                        m.tablet_top = auto.min_y;
+                        m.tablet_right = auto.max_x;
+                        m.tablet_bottom = auto.max_y;
+                        log::info!("auto-mapped area: ({},{}) → ({},{})", auto.min_x, auto.min_y, auto.max_x, auto.max_y);
+                    }
+                    auto.active = false;
+                }
+            }
+        });
 
-        painter.text(
-            Pos2::new(tl.x + 6.0, tl.y + 6.0), egui::Align2::LEFT_TOP,
-            "Active area", egui::FontId::proportional(11.0), theme::ACCENT_DIM,
-        );
+        // ── Right column: preview with live pen ──
+        let ui = &mut cols[1];
 
-        painter.rect_stroke(rect, 2, Stroke::new(1.0, Color32::from_rgb(40, 46, 55)), StrokeKind::Outside);
+        theme::section_frame().show(ui, |ui| {
+            ui.label(theme::label_dim("PREVIEW"));
+            ui.add_space(4.0);
+
+            let avail = ui.available_width();
+            let ps = Vec2::new(avail, avail);
+            let (resp, painter) = ui.allocate_painter(ps, egui::Sense::hover());
+            let rect = resp.rect;
+            painter.rect_filled(rect, 2, theme::BG_INPUT);
+
+            // Grid
+            for i in 1..8 {
+                let t = i as f32 / 8.0;
+                painter.line_segment(
+                    [Pos2::new(rect.left() + t * rect.width(), rect.top()), Pos2::new(rect.left() + t * rect.width(), rect.bottom())],
+                    Stroke::new(0.5, Color32::from_rgb(25, 30, 36)));
+                painter.line_segment(
+                    [Pos2::new(rect.left(), rect.top() + t * rect.height()), Pos2::new(rect.right(), rect.top() + t * rect.height())],
+                    Stroke::new(0.5, Color32::from_rgb(25, 30, 36)));
+            }
+
+            // Active area rectangle
+            let tl = Pos2::new(
+                rect.left() + (m.tablet_left as f32 / 4095.0) * rect.width(),
+                rect.top() + (m.tablet_top as f32 / 4095.0) * rect.height(),
+            );
+            let br = Pos2::new(
+                rect.left() + (m.tablet_right as f32 / 4095.0) * rect.width(),
+                rect.top() + (m.tablet_bottom as f32 / 4095.0) * rect.height(),
+            );
+            let active = egui::Rect::from_min_max(tl, br);
+            painter.rect_filled(active, 0, Color32::from_rgba_premultiplied(0, 212, 170, 20));
+            painter.rect_stroke(active, 0, Stroke::new(1.5, theme::ACCENT), StrokeKind::Outside);
+
+            for corner in [active.left_top(), active.right_top(), active.left_bottom(), active.right_bottom()] {
+                painter.rect_filled(egui::Rect::from_center_size(corner, Vec2::splat(6.0)), 1, theme::ACCENT);
+            }
+
+            painter.text(
+                Pos2::new(tl.x + 6.0, tl.y + 6.0), egui::Align2::LEFT_TOP,
+                "Active area", egui::FontId::proportional(10.0), theme::ACCENT_DIM,
+            );
+
+            // Live pen position
+            if live.connected && (live.pen.x > 0 || live.pen.y > 0) {
+                let px = rect.left() + (live.pen.x as f32 / 4095.0) * rect.width();
+                let py = rect.top() + (live.pen.y as f32 / 4095.0) * rect.height();
+                let pos = Pos2::new(px, py);
+
+                painter.line_segment([Pos2::new(px, rect.top()), Pos2::new(px, rect.bottom())],
+                    Stroke::new(0.5, Color32::from_rgba_premultiplied(0, 212, 170, 50)));
+                painter.line_segment([Pos2::new(rect.left(), py), Pos2::new(rect.right(), py)],
+                    Stroke::new(0.5, Color32::from_rgba_premultiplied(0, 212, 170, 50)));
+
+                let color = if auto.active { theme::RED } else { theme::ACCENT };
+                painter.circle_filled(pos, 4.0, color);
+                painter.circle_stroke(pos, 8.0, Stroke::new(1.0, Color32::from_rgba_premultiplied(color.r(), color.g(), color.b(), 80)));
+            }
+
+            // Automapper capture area preview
+            if auto.active && auto.samples > 2 {
+                let atl = Pos2::new(
+                    rect.left() + (auto.min_x as f32 / 4095.0) * rect.width(),
+                    rect.top() + (auto.min_y as f32 / 4095.0) * rect.height(),
+                );
+                let abr = Pos2::new(
+                    rect.left() + (auto.max_x as f32 / 4095.0) * rect.width(),
+                    rect.top() + (auto.max_y as f32 / 4095.0) * rect.height(),
+                );
+                let cap = egui::Rect::from_min_max(atl, abr);
+                painter.rect_filled(cap, 0, Color32::from_rgba_premultiplied(255, 82, 82, 15));
+                painter.rect_stroke(cap, 0, Stroke::new(1.5, theme::RED), StrokeKind::Outside);
+                painter.text(
+                    Pos2::new(atl.x + 4.0, abr.y - 4.0), egui::Align2::LEFT_BOTTOM,
+                    "Capture", egui::FontId::proportional(10.0), theme::RED,
+                );
+            }
+
+            painter.rect_stroke(rect, 2, Stroke::new(1.0, Color32::from_rgb(40, 46, 55)), StrokeKind::Outside);
+        });
     });
 }
 

@@ -57,6 +57,7 @@ pub struct PonziApp {
     status_msg: String,
     status_timer: f64,
     pressure_test: pressure_test::PressureTest,
+    pub automapper: tabs::AutoMapper,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -138,6 +139,7 @@ impl PonziApp {
             status_msg: String::new(),
             status_timer: 0.0,
             pressure_test: pressure_test::PressureTest::new(),
+            automapper: tabs::AutoMapper::default(),
         }
     }
 
@@ -299,7 +301,7 @@ impl eframe::App for PonziApp {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     match self.active_tab {
                         Tab::Status => tabs::status_tab(ui, &live, &self.config),
-                        Tab::Mapping => tabs::mapping_tab(ui, &mut self.config.mapping),
+                        Tab::Mapping => tabs::mapping_tab(ui, &mut self.config.mapping, &live, &mut self.automapper),
                         Tab::Orientation => tabs::orientation_tab(ui, &mut self.config.orientation),
                         Tab::Pressure => tabs::pressure_tab(ui, &mut self.config.pressure),
                         Tab::Smoothing => tabs::smoothing_tab(ui, &mut self.config.smoothing),
