@@ -710,6 +710,85 @@ pub fn smoothing_tab(ui: &mut egui::Ui, s: &mut SmoothingConfig) {
     });
 }
 
+// ── Presets ──────────────────────────────────────────────────────────────
+
+fn apply_preset(name: &str, b: &mut ButtonConfig) {
+    let k = |s: &str| -> Vec<String> { s.split('+').map(|s| s.trim().to_string()).collect() };
+    match name {
+        "Excalidraw" => {
+            b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+LEFTSHIFT+Z");
+            b.b3 = k("P");              b.b4 = k("E");
+            b.b5 = k("V");              b.b6 = k("H");
+            b.b7 = k("DELETE");          b.b8 = k("LEFTCTRL+D");
+            b.b9 = k("LEFTCTRL+A");     b.b10 = k("LEFTSHIFT+1");
+            b.b11 = k("S");             b.b12 = k("R");
+        }
+        "Krita" => {
+            b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+LEFTSHIFT+Z");
+            b.b3 = k("E");              b.b4 = k("B");
+            b.b5 = k("LEFTBRACE");      b.b6 = k("RIGHTBRACE");
+            b.b7 = k("LEFTCTRL+EQUAL"); b.b8 = k("LEFTCTRL+MINUS");
+            b.b9 = k("SPACE");          b.b10 = k("LEFTCTRL+LEFTALT");
+            b.b11 = k("DELETE");         b.b12 = k("LEFTCTRL+LEFTSHIFT+E");
+        }
+        "GIMP" => {
+            b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+Y");
+            b.b3 = k("P");              b.b4 = k("LEFTSHIFT+E");
+            b.b5 = k("LEFTBRACE");      b.b6 = k("RIGHTBRACE");
+            b.b7 = k("EQUAL");          b.b8 = k("MINUS");
+            b.b9 = k("SPACE");          b.b10 = k("O");
+            b.b11 = k("DELETE");         b.b12 = k("LEFTSHIFT+LEFTCTRL+E");
+        }
+        "Inkscape" => {
+            b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+Y");
+            b.b3 = k("B");              b.b4 = k("P");
+            b.b5 = k("S");              b.b6 = k("N");
+            b.b7 = k("EQUAL");          b.b8 = k("MINUS");
+            b.b9 = k("3");              b.b10 = k("SPACE");
+            b.b11 = k("DELETE");         b.b12 = k("F7");
+        }
+        "Blender" => {
+            b.b1 = k("LEFTCTRL+Z");     b.b2 = k("LEFTCTRL+LEFTSHIFT+Z");
+            b.b3 = k("F");              b.b4 = k("LEFTSHIFT+F");
+            b.b5 = k("G");              b.b6 = k("LEFTSHIFT");
+            b.b7 = k("M");              b.b8 = k("LEFTCTRL");
+            b.b9 = k("KPPLUS");         b.b10 = k("KPMINUS");
+            b.b11 = k("KP1");           b.b12 = k("X");
+        }
+        "osu!" => {
+            b.b1 = k("Z");              b.b2 = k("X");
+            b.b3 = k("C");              b.b4 = k("ESC");
+            b.b5 = k("LEFTCTRL+R");     b.b6 = k("SPACE");
+            b.b7 = k("F4");             b.b8 = k("F5");
+            b.b9 = k("F2");             b.b10 = k("TAB");
+            b.b11 = k("F12");           b.b12 = k("GRAVE");
+        }
+        _ => {}
+    }
+    log::info!("applied preset: {}", name);
+}
+
+fn get_preset_hints(b: &ButtonConfig) -> [&'static str; 12] {
+    let keys: Vec<String> = (0..12).map(|i| b.keys_for(i).join("+")).collect();
+    let first = keys[0].as_str();
+    match first {
+        "LEFTCTRL+Z" if keys[2] == "P" && keys[5] == "H" =>
+            ["Undo", "Redo", "Pen", "Eraser", "Select", "Pan", "Delete", "Duplicate", "Select All", "Zoom Fit", "Stroke Color", "Rectangle"],
+        "LEFTCTRL+Z" if keys[3] == "B" =>
+            ["Undo", "Redo", "Eraser", "Brush", "Size -", "Size +", "Zoom +", "Zoom -", "Pan", "Color Pick", "Delete", "Fit Canvas"],
+        "LEFTCTRL+Z" if keys[3] == "LEFTSHIFT+E" =>
+            ["Undo", "Redo", "Brush", "Eraser", "Size -", "Size +", "Zoom +", "Zoom -", "Pan", "Color Pick", "Delete", "Fit Window"],
+        "LEFTCTRL+Z" if keys[2] == "B" && keys[5] == "N" =>
+            ["Undo", "Redo", "Bezier", "Pencil", "Select", "Node Edit", "Zoom +", "Zoom -", "Fit Page", "Pan", "Delete", "Fill Color"],
+        "LEFTCTRL+Z" if keys[2] == "F" =>
+            ["Undo", "Redo", "Brush Size", "Strength", "Grab", "Smooth", "Mask", "Subtract", "Zoom +", "Zoom -", "Front View", "Mirror X"],
+        "Z" if keys[1] == "X" =>
+            ["Hit L", "Hit R", "Smoke", "Pause", "Retry", "Skip", "Vol -", "Vol +", "Song Select", "Scoreboard", "Screenshot", "Console"],
+        _ =>
+            ["", "", "", "", "", "", "", "", "", "", "", ""],
+    }
+}
+
 // ── Buttons ──────────────────────────────────────────────────────────────
 
 pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenButtonConfig) {
@@ -783,12 +862,24 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
     ui.add_space(12.0);
 
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("TABLET EXPRESS KEYS"));
-        ui.label(egui::RichText::new("Keys separated by comma. Ex: LEFTCTRL, Z").color(theme::TEXT_DIM).size(10.0));
+        ui.horizontal(|ui| {
+            ui.label(theme::label_dim("TABLET EXPRESS KEYS"));
+            ui.add_space(12.0);
+            ui.label(egui::RichText::new("Preset:").color(theme::TEXT_DIM).size(10.5));
+
+            let presets = ["Excalidraw", "Krita", "GIMP", "Inkscape", "Blender", "osu!"];
+            for name in presets {
+                let btn = egui::Button::new(egui::RichText::new(name).size(10.5).color(theme::TEXT_SECONDARY))
+                    .fill(theme::BG_ELEVATED).corner_radius(2);
+                if ui.add(btn).clicked() {
+                    apply_preset(name, buttons);
+                }
+            }
+        });
         ui.add_space(4.0);
 
+        let hints = get_preset_hints(buttons);
         let labels = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12"];
-        let hints = ["Undo", "Redo", "Pen", "Eraser", "Select", "Pan", "Delete", "Duplicate", "Select All", "Zoom Fit", "Stroke Color", "Rectangle"];
 
         egui::Grid::new("express_btns").num_columns(3).spacing([8.0, 3.0]).show(ui, |ui| {
             for (i, (label, hint)) in labels.iter().zip(hints.iter()).enumerate() {
@@ -801,7 +892,11 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
                     *keys = text.split(',').map(|s| s.trim().to_uppercase()).filter(|s| !s.is_empty()).collect();
                 }
 
-                ui.label(egui::RichText::new(format!("({})", hint)).color(theme::TEXT_DIM).size(9.5));
+                if !hint.is_empty() {
+                    ui.label(egui::RichText::new(*hint).color(theme::TEXT_DIM).size(9.5));
+                } else {
+                    ui.label("");
+                }
                 ui.end_row();
             }
         });

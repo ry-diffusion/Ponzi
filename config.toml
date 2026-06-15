@@ -40,25 +40,20 @@ level = 3
 anti_chatter = false
 anti_chatter_threshold = 2
 
+# Excalidraw preset
 [buttons]
-b1 = ["E"]
-b2 = ["B"]
-b3 = [
-    "LEFTCTRL",
-    "KPMINUS",
-]
-b4 = [
-    "LEFTCTRL",
-    "KPPLUS",
-]
-b5 = ["LEFTBRACE"]
-b6 = ["RIGHTBRACE"]
-b7 = ["SCROLLUP"]
-b8 = ["TAB"]
-b9 = ["SCROLLDOWN"]
-b10 = ["SPACE"]
-b11 = ["LEFTCTRL"]
-b12 = ["LEFTALT"]
+b1 = ["LEFTCTRL", "Z"]                    # Undo
+b2 = ["LEFTCTRL", "LEFTSHIFT", "Z"]       # Redo
+b3 = ["P"]                                 # Pen/Draw
+b4 = ["E"]                                 # Eraser
+b5 = ["V"]                                 # Select
+b6 = ["H"]                                 # Hand/Pan
+b7 = ["DELETE"]                             # Delete
+b8 = ["LEFTCTRL", "D"]                    # Duplicate
+b9 = ["LEFTCTRL", "A"]                    # Select All
+b10 = ["LEFTSHIFT", "1"]                  # Zoom to fit
+b11 = ["S"]                                # Stroke color
+b12 = ["R"]                                # Rectangle
 
 [pen_buttons]
 stylus = "BTN_STYLUS"
