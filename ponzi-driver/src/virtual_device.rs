@@ -243,30 +243,38 @@ impl InputProcessor {
             (ox, oy)
         };
 
-        // Map coordinates
-        let mapped_x = map_coordinate(sx, self.mapping.tablet_left, self.mapping.tablet_right, self.mapping.screen_left, self.mapping.screen_right);
-        let mapped_y = map_coordinate(sy, self.mapping.tablet_top, self.mapping.tablet_bottom, self.mapping.screen_top, self.mapping.screen_bottom);
+        // Check if pen is inside the mapped tablet area
+        let in_bounds = sx >= self.mapping.tablet_left
+            && sx <= self.mapping.tablet_right
+            && sy >= self.mapping.tablet_top
+            && sy <= self.mapping.tablet_bottom;
 
-        let (prev_ox, prev_oy) = apply_orientation(
-            self.prev.x, self.prev.y, self.resolution,
-            &self.orientation, self.mapping.rotation,
-        );
-        let prev_mx = map_coordinate(prev_ox, self.mapping.tablet_left, self.mapping.tablet_right, self.mapping.screen_left, self.mapping.screen_right);
-        let prev_my = map_coordinate(prev_oy, self.mapping.tablet_top, self.mapping.tablet_bottom, self.mapping.screen_top, self.mapping.screen_bottom);
+        if in_bounds {
+            let mapped_x = map_coordinate(sx, self.mapping.tablet_left, self.mapping.tablet_right, self.mapping.screen_left, self.mapping.screen_right);
+            let mapped_y = map_coordinate(sy, self.mapping.tablet_top, self.mapping.tablet_bottom, self.mapping.screen_top, self.mapping.screen_bottom);
 
-        if prev_mx != mapped_x || prev_my != mapped_y {
-            pen_events.push(InputEvent::new(EventType::ABSOLUTE.0, AbsoluteAxisCode::ABS_X.0, mapped_x));
-            pen_events.push(InputEvent::new(EventType::ABSOLUTE.0, AbsoluteAxisCode::ABS_Y.0, mapped_y));
+            let (prev_ox, prev_oy) = apply_orientation(
+                self.prev.x, self.prev.y, self.resolution,
+                &self.orientation, self.mapping.rotation,
+            );
+            let prev_mx = map_coordinate(prev_ox, self.mapping.tablet_left, self.mapping.tablet_right, self.mapping.screen_left, self.mapping.screen_right);
+            let prev_my = map_coordinate(prev_oy, self.mapping.tablet_top, self.mapping.tablet_bottom, self.mapping.screen_top, self.mapping.screen_bottom);
+
+            if prev_mx != mapped_x || prev_my != mapped_y {
+                pen_events.push(InputEvent::new(EventType::ABSOLUTE.0, AbsoluteAxisCode::ABS_X.0, mapped_x));
+                pen_events.push(InputEvent::new(EventType::ABSOLUTE.0, AbsoluteAxisCode::ABS_Y.0, mapped_y));
+            }
         }
 
-        // Pressure
+        // Pressure (only emit if in bounds)
         if self.prev.pressure_raw != data.pressure_raw {
-            let p = normalize_pressure(data.pressure_raw, &self.pressure);
+            let p = if in_bounds { normalize_pressure(data.pressure_raw, &self.pressure) } else { 0 };
             pen_events.push(InputEvent::new(EventType::ABSOLUTE.0, AbsoluteAxisCode::ABS_PRESSURE.0, p));
         }
 
-        // Touch state with anti-chatter
-        let touching = is_touching(data.pressure_raw, self.pressure.touch_threshold);
+        // Touch state — only register touch if in bounds
+        let raw_touching = is_touching(data.pressure_raw, self.pressure.touch_threshold);
+        let touching = raw_touching && in_bounds;
         let emit_touch_change = if self.smoothing.anti_chatter {
             if touching != self.prev_touching {
                 self.chatter_count += 1;
