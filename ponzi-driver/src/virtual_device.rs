@@ -23,9 +23,6 @@ impl VirtualPen {
         let mut keys = AttributeSet::<KeyCode>::new();
         keys.insert(KeyCode::BTN_TOOL_PEN);
         keys.insert(KeyCode::BTN_TOUCH);
-        keys.insert(KeyCode::BTN_LEFT);
-        keys.insert(KeyCode::BTN_RIGHT);
-        keys.insert(KeyCode::BTN_MIDDLE);
         keys.insert(KeyCode::BTN_STYLUS);
         keys.insert(KeyCode::BTN_STYLUS2);
 
