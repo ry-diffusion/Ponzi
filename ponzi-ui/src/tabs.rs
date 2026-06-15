@@ -815,64 +815,66 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
     theme::section_frame().show(ui, |ui| {
         ui.label(theme::label_dim("PEN"));
         ui.add_space(4.0);
-        egui::Grid::new("pen_btns").num_columns(2).spacing([12.0, 6.0]).show(ui, |ui| {
-            ui.label("Tip touch");
-            let tip_options = [
-                ("none", "No click"),
-                ("BTN_LEFT", "Left click"),
-                ("BTN_RIGHT", "Right click"),
-                ("BTN_MIDDLE", "Middle click"),
-            ];
-            egui::ComboBox::from_id_salt("tip_select")
-                .selected_text(tip_options.iter().find(|(v, _)| *v == pen.tip).map(|(_, l)| *l).unwrap_or(&pen.tip))
-                .width(160.0)
+        let all_actions: &[(&str, &str)] = &[
+            ("none", "Disabled"),
+            ("BTN_LEFT", "Left click"),
+            ("BTN_RIGHT", "Right click"),
+            ("BTN_MIDDLE", "Middle click"),
+            ("BTN_STYLUS", "Pen button"),
+            ("BTN_STYLUS2", "Eraser button"),
+            ("KEY_EQUAL", "Zoom in (+)"),
+            ("KEY_MINUS", "Zoom out (-)"),
+            ("KPPLUS", "Zoom in (Numpad)"),
+            ("KPMINUS", "Zoom out (Numpad)"),
+            ("KEY_LEFTCTRL", "Ctrl (hold)"),
+            ("KEY_LEFTSHIFT", "Shift (hold)"),
+            ("KEY_LEFTALT", "Alt (hold)"),
+            ("KEY_SPACE", "Space (pan)"),
+            ("KEY_E", "E"),
+            ("KEY_B", "B"),
+            ("KEY_P", "P"),
+            ("KEY_V", "V"),
+            ("KEY_H", "H"),
+            ("KEY_S", "S"),
+            ("KEY_Z", "Z"),
+            ("KEY_DELETE", "Delete"),
+            ("SCROLLUP", "Scroll up"),
+            ("SCROLLDOWN", "Scroll down"),
+        ];
+
+        fn action_label<'a>(val: &str, options: &'a [(&str, &str)]) -> &'a str {
+            options.iter().find(|(v, _)| *v == val).map(|(_, l)| *l).unwrap_or_else(|| {
+                options.iter().find(|(v, _)| {
+                    val.strip_prefix("KEY_").map_or(false, |stripped| *v == format!("KEY_{}", stripped))
+                }).map(|(_, l)| *l).unwrap_or("Custom")
+            })
+        }
+
+        fn pen_combo(ui: &mut egui::Ui, id: &str, value: &mut String, options: &[(&str, &str)]) {
+            let label = action_label(value, options);
+            egui::ComboBox::from_id_salt(id)
+                .selected_text(label)
+                .width(170.0)
                 .show_ui(ui, |ui| {
-                    for (val, label) in &tip_options {
-                        if ui.selectable_label(pen.tip == *val, *label).clicked() {
-                            pen.tip = val.to_string();
+                    for (val, lbl) in options {
+                        if ui.selectable_label(*value == *val, *lbl).clicked() {
+                            *value = val.to_string();
                         }
                     }
                 });
+        }
+
+        egui::Grid::new("pen_btns").num_columns(2).spacing([12.0, 6.0]).show(ui, |ui| {
+            ui.label("Tip touch");
+            pen_combo(ui, "tip_sel", &mut pen.tip, all_actions);
             ui.end_row();
 
             ui.label("Lower barrel");
-            let barrel_options = [
-                ("BTN_STYLUS", "Pen button"),
-                ("BTN_LEFT", "Left click"),
-                ("BTN_RIGHT", "Right click"),
-                ("BTN_MIDDLE", "Middle click"),
-                ("none", "Disabled"),
-            ];
-            egui::ComboBox::from_id_salt("stylus_select")
-                .selected_text(barrel_options.iter().find(|(v, _)| *v == pen.stylus).map(|(_, l)| *l).unwrap_or(&pen.stylus))
-                .width(160.0)
-                .show_ui(ui, |ui| {
-                    for (val, label) in &barrel_options {
-                        if ui.selectable_label(pen.stylus == *val, *label).clicked() {
-                            pen.stylus = val.to_string();
-                        }
-                    }
-                });
+            pen_combo(ui, "stylus_sel", &mut pen.stylus, all_actions);
             ui.end_row();
 
             ui.label("Upper barrel");
-            let eraser_options = [
-                ("BTN_STYLUS2", "Eraser button"),
-                ("BTN_LEFT", "Left click"),
-                ("BTN_RIGHT", "Right click"),
-                ("BTN_MIDDLE", "Middle click"),
-                ("none", "Disabled"),
-            ];
-            egui::ComboBox::from_id_salt("eraser_select")
-                .selected_text(eraser_options.iter().find(|(v, _)| *v == pen.eraser).map(|(_, l)| *l).unwrap_or(&pen.eraser))
-                .width(160.0)
-                .show_ui(ui, |ui| {
-                    for (val, label) in &eraser_options {
-                        if ui.selectable_label(pen.eraser == *val, *label).clicked() {
-                            pen.eraser = val.to_string();
-                        }
-                    }
-                });
+            pen_combo(ui, "eraser_sel", &mut pen.eraser, all_actions);
             ui.end_row();
         });
     });
