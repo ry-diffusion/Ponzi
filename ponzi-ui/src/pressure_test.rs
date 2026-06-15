@@ -26,8 +26,8 @@ impl PressureTest {
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui, live: &LiveData, config: &Config) {
-        ui.label(theme::section_heading("TESTE DE PRESSÃO"));
-        ui.label(egui::RichText::new("Desenhe na mesa para testar pressão e posicionamento").color(theme::TEXT_DIM).size(11.0));
+        ui.label(theme::section_heading("PRESSURE TEST"));
+        ui.label(egui::RichText::new("Draw on the tablet to test pressure and positioning").color(theme::TEXT_DIM).size(11.0));
         ui.add_space(8.0);
 
         // Data readout bar
@@ -55,7 +55,7 @@ impl PressureTest {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let clear_btn = egui::Button::new(
-                        egui::RichText::new("Limpar").color(theme::TEXT_SECONDARY).size(11.0)
+                        egui::RichText::new("Clear").color(theme::TEXT_SECONDARY).size(11.0)
                     ).fill(theme::BG_ELEVATED).corner_radius(2);
                     if ui.add(clear_btn).clicked() {
                         self.strokes.clear();

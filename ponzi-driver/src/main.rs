@@ -1,6 +1,7 @@
 use env_logger::Env;
-use log::info;
+use log::{error, info};
 use signal_hook::{consts::{SIGINT, SIGQUIT, SIGTERM}, iterator::Signals};
+use std::fs;
 use std::path::Path;
 
 use ponzi_driver::config::Config;
@@ -8,31 +9,58 @@ use ponzi_driver::protocol::PenData;
 use ponzi_driver::usb::Tablet;
 use ponzi_driver::virtual_device::{InputProcessor, VirtualKeys, VirtualPen};
 
+const PID_FILE: &str = "/run/ponzi/ponzi.pid";
+const CONFIG_PATHS: &[&str] = &[
+    "config.toml",
+    "/etc/ponzi/config.toml",
+];
+
+fn find_config() -> Config {
+    for path in CONFIG_PATHS {
+        if let Ok(c) = Config::load(Path::new(path)) {
+            info!("Loaded config from {}", path);
+            return c;
+        }
+    }
+    info!("No config found, using defaults");
+    Config::default()
+}
+
+fn write_pid() {
+    let pid = std::process::id();
+    if let Some(parent) = Path::new(PID_FILE).parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if let Err(e) = fs::write(PID_FILE, pid.to_string()) {
+        error!("Could not write PID file: {}", e);
+    } else {
+        info!("PID {} written to {}", pid, PID_FILE);
+    }
+}
+
+fn remove_pid() {
+    let _ = fs::remove_file(PID_FILE);
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init_from_env(Env::default().filter_or("RUST_LOG", "info"));
 
-    let cfg = match Config::load(Path::new("config.toml")) {
-        Ok(c) => {
-            info!("Loaded config.toml");
-            c
-        }
-        Err(e) => {
-            info!("No config.toml ({}), using defaults", e);
-            Config::default()
-        }
-    };
+    info!("Ponzi driver v{} starting", env!("CARGO_PKG_VERSION"));
+
+    write_pid();
+    let cfg = find_config();
 
     let mut signals = Signals::new([SIGINT, SIGTERM, SIGQUIT])?;
 
     let mut tablet = Tablet::open(cfg.device.vendor_id, cfg.device.product_id)?;
     tablet.init()?;
     tablet.set_full_mode()?;
-    info!("Tablet attached and running");
+    info!("Tablet attached (VID {:04X}, PID {:04X})", cfg.device.vendor_id, cfg.device.product_id);
 
     let mut pen = VirtualPen::new(&cfg.pressure, &cfg.mapping)?;
     let mut keys = VirtualKeys::new(&cfg.buttons)?;
     let mut processor = InputProcessor::new(&cfg);
-    info!("Virtual devices ready");
+    info!("Virtual input devices registered — driver is running");
 
     let mut buf = vec![0u8; 64];
 
@@ -48,5 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    remove_pid();
+    info!("Driver stopped");
     Ok(())
 }

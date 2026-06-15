@@ -1,34 +1,34 @@
 #!/bin/bash
 set -e
 
-echo "=== Instalando pingit-tablet-driver ==="
+echo "=== Installing Ponzi ==="
 
-# Compilar
-cargo build --release
+cargo build --release -p ponzi-driver -p ponzi-ui
 
-# Copiar binário
-sudo cp target/release/pingit-tablet-driver /usr/local/bin/
-echo "Binário instalado em /usr/local/bin/pingit-tablet-driver"
+sudo install -Dm755 target/release/ponzi-driver /usr/bin/ponzi-driver
+sudo install -Dm755 target/release/ponzi-ui /usr/bin/ponzi-ui
+echo "Binaries installed to /usr/bin/"
 
-# Criar diretório de config
-sudo mkdir -p /etc/pingit-tablet
-sudo cp config.toml /etc/pingit-tablet/
-echo "Config copiada para /etc/pingit-tablet/config.toml"
+sudo mkdir -p /etc/ponzi
+sudo cp -n ponzi-driver/config.toml /etc/ponzi/config.toml 2>/dev/null || true
+echo "Config at /etc/ponzi/config.toml"
 
-# Instalar udev rule
-sudo cp 99-pingit-tablet.rules /etc/udev/rules.d/
+sudo cp 99-pingit-tablet.rules /etc/udev/rules.d/99-ponzi-tablet.rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger
-echo "Regra udev instalada"
+echo "udev rule installed"
 
-# Instalar serviço systemd
-sudo cp pingit-tablet-driver.service /etc/systemd/system/
+sudo cp ponzi-driver.service /usr/lib/systemd/system/ponzi-driver.service
 sudo systemctl daemon-reload
-sudo systemctl enable pingit-tablet-driver
-echo "Serviço systemd habilitado"
+sudo systemctl enable ponzi-driver
+echo "Systemd service enabled"
+
+sudo cp ponzi.desktop /usr/share/applications/ponzi.desktop
+echo "Desktop entry installed"
 
 echo ""
-echo "=== Instalação completa! ==="
-echo "Para iniciar agora: sudo systemctl start pingit-tablet-driver"
-echo "Para ver logs: journalctl -u pingit-tablet-driver -f"
-echo "Para editar config: sudo nano /etc/pingit-tablet/config.toml"
+echo "=== Done! ==="
+echo "  Start driver:  sudo systemctl start ponzi-driver"
+echo "  Open UI:       ponzi-ui"
+echo "  View logs:     journalctl -u ponzi-driver -f"
+echo "  Edit config:   sudo nano /etc/ponzi/config.toml"

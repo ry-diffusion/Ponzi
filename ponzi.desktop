@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Ponzi
+Comment=Drawing tablet driver & configurator
+Exec=ponzi-ui
+Icon=input-tablet
+Type=Application
+Categories=Settings;HardwareSettings;
+Keywords=tablet;pen;drawing;wacom;driver;

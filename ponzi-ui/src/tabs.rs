@@ -38,7 +38,7 @@ pub fn status_tab(ui: &mut egui::Ui, live: &LiveData, config: &Config) {
             ui.label(theme::label_mono(&format!("X {:>5}  Y {:>5}", live.pen.x, live.pen.y)));
             ui.add_space(8.0);
 
-            ui.label(theme::label_dim("PRESSÃO RAW"));
+            ui.label(theme::label_dim("PRESSURE RAW"));
             ui.label(theme::label_mono(&format!("{:>5}", live.pen.pressure_raw)));
             ui.add_space(8.0);
 
@@ -415,13 +415,13 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
     page_heading(ui, "BUTTONS", "Express key and pen button mapping");
 
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("CANETA"));
+        ui.label(theme::label_dim("PEN"));
         ui.add_space(4.0);
         egui::Grid::new("pen_btns").num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
-            ui.label("Inferior");
+            ui.label("Lower");
             ui.add_sized([200.0, 22.0], egui::TextEdit::singleline(&mut pen.stylus));
             ui.end_row();
-            ui.label("Superior");
+            ui.label("Upper");
             ui.add_sized([200.0, 22.0], egui::TextEdit::singleline(&mut pen.eraser));
             ui.end_row();
         });
@@ -430,8 +430,8 @@ pub fn buttons_tab(ui: &mut egui::Ui, buttons: &mut ButtonConfig, pen: &mut PenB
     ui.add_space(12.0);
 
     theme::section_frame().show(ui, |ui| {
-        ui.label(theme::label_dim("BOTÕES EXPRESS DA MESA"));
-        ui.label(egui::RichText::new("Teclas separadas por vírgula. Ex: LEFTCTRL, Z").color(theme::TEXT_DIM).size(10.0));
+        ui.label(theme::label_dim("TABLET EXPRESS KEYS"));
+        ui.label(egui::RichText::new("Keys separated by comma. Ex: LEFTCTRL, Z").color(theme::TEXT_DIM).size(10.0));
         ui.add_space(4.0);
 
         let labels = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12"];

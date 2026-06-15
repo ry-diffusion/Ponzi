@@ -1,0 +1,17 @@
+[Unit]
+Description=Ponzi Drawing Tablet Driver
+Documentation=https://github.com/ry-diffusion/Ponzi
+After=multi-user.target
+ConditionPathExists=/dev/bus/usb
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ponzi-driver
+RuntimeDirectory=ponzi
+PIDFile=/run/ponzi/ponzi.pid
+Restart=on-failure
+RestartSec=3
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=multi-user.target

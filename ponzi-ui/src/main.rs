@@ -83,7 +83,7 @@ impl Tab {
             Self::Pressure => "Pressure",
             Self::Smoothing => "Smoothing",
             Self::Buttons => "Buttons",
-            Self::PressureTest => "Teste",
+            Self::PressureTest => "Test",
         }
     }
 
@@ -93,10 +93,13 @@ impl Tab {
     ];
 }
 
+const CONFIG_PATHS: &[&str] = &["config.toml", "/etc/ponzi/config.toml"];
+
 impl PonziApp {
     fn new(cc: &eframe::CreationContext) -> Self {
-        let config_path = "config.toml".to_string();
-        let config = Config::load(Path::new(&config_path)).unwrap_or_default();
+        let (config_path, config) = CONFIG_PATHS.iter()
+            .find_map(|p| Config::load(Path::new(p)).ok().map(|c| (p.to_string(), c)))
+            .unwrap_or_else(|| ("config.toml".to_string(), Config::default()));
 
         let live = Arc::new(Mutex::new(LiveData::default()));
         let unlock_signal = Arc::new(Mutex::new(false));
@@ -186,14 +189,14 @@ impl eframe::App for PonziApp {
                         let hovered = resp.hovered();
 
                         if selected {
-                            ui.painter().rect_filled(rect, 3, Color32::from_rgba_premultiplied(0, 212, 170, 15));
+                            ui.painter().rect_filled(rect, 3, Color32::from_rgba_premultiplied(0, 212, 170, 35));
                             let rail = egui::Rect::from_min_size(rect.left_top(), egui::vec2(3.0, rect.height()));
                             ui.painter().rect_filled(rail, 1, theme::ACCENT);
                         } else if hovered {
-                            ui.painter().rect_filled(rect, 3, Color32::from_rgba_premultiplied(255, 255, 255, 6));
+                            ui.painter().rect_filled(rect, 3, Color32::from_rgba_premultiplied(255, 255, 255, 10));
                         }
 
-                        let text_color = if selected { theme::ACCENT } else if hovered { theme::TEXT_PRIMARY } else { theme::TEXT_SECONDARY };
+                        let text_color = if selected { theme::TEXT_PRIMARY } else if hovered { theme::ACCENT } else { theme::TEXT_SECONDARY };
 
                         let icon_pos = egui::pos2(rect.left() + 14.0, rect.center().y);
                         ui.painter().text(icon_pos, egui::Align2::CENTER_CENTER,
